@@ -23,6 +23,10 @@ export type ForkFeatureSettings = {
   autocomplete: {
     enabled: boolean;
   };
+  commitGeneration: {
+    maxFiles: number;
+    variantsEnabled: boolean;
+  };
 };
 
 export const DEFAULT_FORK_FEATURE_SETTINGS: ForkFeatureSettings = {
@@ -47,6 +51,10 @@ export const DEFAULT_FORK_FEATURE_SETTINGS: ForkFeatureSettings = {
   autocomplete: {
     enabled: true,
   },
+  commitGeneration: {
+    maxFiles: 40,
+    variantsEnabled: true,
+  },
 };
 
 const clampTimeoutSeconds = (value: unknown): number => {
@@ -70,6 +78,11 @@ const normalizeBoolean = (value: unknown, fallback: boolean): boolean => (
   typeof value === 'boolean' ? value : fallback
 );
 
+const normalizePositiveInteger = (value: unknown, fallback: number, min: number, max: number): number => {
+  const numeric = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return Math.max(min, Math.min(max, Math.floor(numeric)));
+};
+
 const asRecord = (value: unknown): Record<string, unknown> => (
   value && typeof value === 'object' ? value as Record<string, unknown> : {}
 );
@@ -82,6 +95,7 @@ export const normalizeForkFeatureSettings = (value: unknown): ForkFeatureSetting
   const repoIndex = asRecord(input.repoIndex);
   const kanban = asRecord(input.kanban);
   const autocomplete = asRecord(input.autocomplete);
+  const commitGeneration = asRecord(input.commitGeneration);
   const flat = input;
 
   const pick = (record: Record<string, unknown>, key: string, flatKey: string): unknown => (
@@ -119,6 +133,18 @@ export const normalizeForkFeatureSettings = (value: unknown): ForkFeatureSetting
     },
     autocomplete: {
       enabled: normalizeBoolean(pick(autocomplete, 'enabled', 'fork.autocomplete.enabled'), DEFAULT_FORK_FEATURE_SETTINGS.autocomplete.enabled),
+    },
+    commitGeneration: {
+      maxFiles: normalizePositiveInteger(
+        pick(commitGeneration, 'maxFiles', 'fork.commitGeneration.maxFiles'),
+        DEFAULT_FORK_FEATURE_SETTINGS.commitGeneration.maxFiles,
+        1,
+        300,
+      ),
+      variantsEnabled: normalizeBoolean(
+        pick(commitGeneration, 'variantsEnabled', 'fork.commitGeneration.variantsEnabled'),
+        DEFAULT_FORK_FEATURE_SETTINGS.commitGeneration.variantsEnabled,
+      ),
     },
   };
 };

@@ -25,5 +25,7 @@
   "configuration.fork.modelFallback.chain.description": "Fallback model chain configuration for commit, PR, autocomplete, docs, and chat generation.",
   "configuration.fork.repoIndex.enabled.description": "Enable the project repository index used by autocomplete, context, and docs coverage.",
   "configuration.fork.kanban.enabled.description": "Enable the project-local Kanban board.",
-  "configuration.fork.autocomplete.enabled.description": "Enable fork autocomplete sources for prompts and commit input."
+  "configuration.fork.autocomplete.enabled.description": "Enable fork autocomplete sources for prompts and commit input.",
+  "configuration.fork.commitGeneration.maxFiles.description": "Maximum staged file paths sent to commit-message generation. Extra files are omitted from the generation prompt and reported in the UI.",
+  "configuration.fork.commitGeneration.variantsEnabled.description": "Show one-click commit-message variants after generation."
 }

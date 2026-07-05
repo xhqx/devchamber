@@ -63,6 +63,11 @@ import { getRootBranch } from '@/lib/worktrees/worktreeStatus';
 import { cn } from '@/lib/utils';
 import { generateCommitMessage as generateSessionCommitMessage, getGitWorktreeBootstrapStatus } from '@/lib/gitApi';
 import { buildCommitSuggestions } from '@/lib/autocomplete/commitScopes';
+import {
+  applyCommitGenerationFileBudget,
+  buildCommitGenerationVariants,
+  type CommitGenerationVariant,
+} from '@/lib/commitGeneration';
 import { sessionEvents } from '@/lib/sessionEvents';
 import { useI18n } from '@/lib/i18n';
 
@@ -491,7 +496,9 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
 
   const settingsGitmojiEnabled = useConfigStore((state) => state.settingsGitmojiEnabled);
   const settingsForkFeatures = useConfigStore((state) => state.settingsForkFeatures);
+  const getResolvedGitGenerationModel = useConfigStore((state) => state.getResolvedGitGenerationModel);
   const commitAutocompleteEnabled = settingsForkFeatures.autocomplete.enabled;
+  const commitGenerationSettings = settingsForkFeatures.commitGeneration;
   const [rootBranchHint, setRootBranchHint] = React.useState<string | null>(null);
   const { gitmojis: gitmojiEmojis } = useGitmojiList(settingsGitmojiEnabled);
 
@@ -558,6 +565,8 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   const [generatedHighlights, setGeneratedHighlights] = React.useState<string[]>(
     initialSnapshot?.generatedHighlights ?? []
   );
+  const [commitGenerationVariants, setCommitGenerationVariants] = React.useState<CommitGenerationVariant[]>([]);
+  const [commitGenerationBudgetLabel, setCommitGenerationBudgetLabel] = React.useState<string | null>(null);
   const hasPendingIndexMutation = movingChangePaths.size > 0 || gitIndexMutationQueue.size() > 0 || gitIndexMutationQueue.isRunning();
 
   const scrollActionPanelToBottom = React.useCallback(() => {
@@ -609,6 +618,8 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   }, [worktreeMetadata?.createdFromBranch, status, rootBranchHint]);
   const clearGeneratedHighlights = React.useCallback(() => {
     setGeneratedHighlights([]);
+    setCommitGenerationVariants([]);
+    setCommitGenerationBudgetLabel(null);
   }, []);
   const [expandedCommitHashes, setExpandedCommitHashes] = React.useState<Set<string>>(new Set());
   const [commitFilesMap, setCommitFilesMap] = React.useState<Map<string, CommitFileEntry[]>>(new Map());
@@ -1222,6 +1233,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   const handleGenerateCommitMessage = React.useCallback(async () => {
     if (!currentDirectory) return;
     const selectedFilePaths = stagedChangeEntries.map((file) => file.path).sort();
+    const fileBudget = applyCommitGenerationFileBudget(selectedFilePaths, commitGenerationSettings.maxFiles);
     if (selectedFilePaths.length === 0) {
       toast.error(t('gitView.toast.stageFileToDescribe'));
       return;
@@ -1229,12 +1241,14 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
 
     console.error('[git-generation][browser] generate button clicked', {
       directory: currentDirectory,
-      selectedFiles: selectedFilePaths.length,
+      selectedFiles: fileBudget.includedFiles.length,
+      omittedFiles: fileBudget.omittedFiles.length,
     });
 
     setIsGeneratingMessage(true);
     try {
-      const { message } = await generateSessionCommitMessage(currentDirectory, selectedFilePaths);
+      const resolvedModel = getResolvedGitGenerationModel();
+      const { message } = await generateSessionCommitMessage(currentDirectory, fileBudget.includedFiles, resolvedModel ?? undefined);
       const subject = message.subject?.trim() ?? '';
       const highlights = Array.isArray(message.highlights) ? message.highlights : [];
 
@@ -1250,8 +1264,18 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
           }
         }
         setCommitMessage(finalSubject);
+        setCommitGenerationVariants(
+          commitGenerationSettings.variantsEnabled
+            ? buildCommitGenerationVariants({ subject: finalSubject, highlights })
+            : []
+        );
       }
       setGeneratedHighlights(highlights);
+      setCommitGenerationBudgetLabel(
+        fileBudget.omittedFiles.length > 0
+          ? `Generated from ${fileBudget.includedFiles.length} of ${selectedFilePaths.length} staged files; ${fileBudget.omittedFiles.length} omitted by fork budget.`
+          : null
+      );
 
       scrollActionPanelToBottom();
     } catch (error) {
@@ -1265,7 +1289,17 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     } finally {
       setIsGeneratingMessage(false);
     }
-  }, [currentDirectory, stagedChangeEntries, settingsGitmojiEnabled, gitmojiEmojis, scrollActionPanelToBottom, t]);
+  }, [
+    currentDirectory,
+    stagedChangeEntries,
+    commitGenerationSettings.maxFiles,
+    commitGenerationSettings.variantsEnabled,
+    getResolvedGitGenerationModel,
+    settingsGitmojiEnabled,
+    gitmojiEmojis,
+    scrollActionPanelToBottom,
+    t,
+  ]);
 
   const formatBlockingReason = (reason: ReturnType<typeof getMutationBlockingReasons>[number]): string => {
     if (reason.reason === 'attention') {
@@ -1909,6 +1943,10 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     clearGeneratedHighlights();
   }, [clearGeneratedHighlights]);
 
+  const handleSelectCommitGenerationVariant = React.useCallback((variant: CommitGenerationVariant) => {
+    setCommitMessage(variant.subject);
+  }, []);
+
   const handleSelectGitmoji = React.useCallback((emoji: string, code: string) => {
     const token = code || emoji;
     setCommitMessage((current) => {
@@ -2485,6 +2523,9 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
                         onOpenGitmojiPicker={() => setIsGitmojiPickerOpen(true)}
                         commitSuggestions={commitSuggestions}
                         autocompleteEnabled={commitAutocompleteEnabled}
+                        commitGenerationVariants={commitGenerationVariants}
+                        onSelectCommitGenerationVariant={handleSelectCommitGenerationVariant}
+                        commitGenerationBudgetLabel={commitGenerationBudgetLabel}
                       />
                     </>
                   ) : (

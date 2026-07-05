@@ -216,7 +216,6 @@ export async function generateCommitMessage(
   options?: { zenModel?: string; providerId?: string; modelId?: string }
 ): Promise<{ message: import('./api/types').GeneratedCommitMessage }> {
   const startedAt = Date.now();
-  void options;
   const generationSession = await resolveGenerationSessionContext();
 
   console.info('[git-generation][browser] request', {
@@ -227,6 +226,9 @@ export async function generateCommitMessage(
     sessionId: generationSession.sessionId,
     providerId: generationSession.providerID,
     modelId: generationSession.modelID,
+    requestedProviderId: options?.providerId,
+    requestedModelId: options?.modelId,
+    requestedZenModel: options?.zenModel,
     agent: generationSession.agent,
   });
 

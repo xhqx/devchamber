@@ -25,5 +25,7 @@
   "configuration.fork.modelFallback.chain.description": "Configuration des modèles de repli pour commit, PR, autocomplétion, documentation et chat.",
   "configuration.fork.repoIndex.enabled.description": "Activer l'index du dépôt utilisé par l'autocomplétion, le contexte et la couverture documentaire.",
   "configuration.fork.kanban.enabled.description": "Activer le tableau Kanban local au projet.",
-  "configuration.fork.autocomplete.enabled.description": "Activer les sources d'autocomplétion du fork pour les prompts et messages de commit."
+  "configuration.fork.autocomplete.enabled.description": "Activer les sources d'autocomplétion du fork pour les prompts et messages de commit.",
+  "configuration.fork.commitGeneration.maxFiles.description": "Nombre maximal de chemins de fichiers indexés envoyés à la génération du message de commit. Les fichiers supplémentaires sont omis du prompt et signalés dans l’interface.",
+  "configuration.fork.commitGeneration.variantsEnabled.description": "Affiche des variantes de message de commit en un clic après la génération."
 }

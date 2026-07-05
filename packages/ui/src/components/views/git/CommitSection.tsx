@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Icon } from "@/components/icon/Icon";
 import { useI18n } from '@/lib/i18n';
 import type { CommitSuggestion } from '@/lib/autocomplete/commitScopes';
+import type { CommitGenerationVariant } from '@/lib/commitGeneration';
 
 type CommitAction = 'commit' | 'commitAndPush' | null;
 
@@ -25,6 +26,9 @@ interface CommitSectionProps {
   onOpenGitmojiPicker: () => void;
   commitSuggestions?: CommitSuggestion[];
   autocompleteEnabled?: boolean;
+  commitGenerationVariants?: CommitGenerationVariant[];
+  onSelectCommitGenerationVariant?: (variant: CommitGenerationVariant) => void;
+  commitGenerationBudgetLabel?: string | null;
 }
 
 export const CommitSection: React.FC<CommitSectionProps> = ({
@@ -43,6 +47,9 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
   onOpenGitmojiPicker,
   commitSuggestions = [],
   autocompleteEnabled = false,
+  commitGenerationVariants = [],
+  onSelectCommitGenerationVariant,
+  commitGenerationBudgetLabel = null,
 }) => {
   const { t } = useI18n();
   const hasStagedFiles = stagedCount > 0;
@@ -93,6 +100,34 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
             {t('gitView.commit.addGitmoji')}
           </Button>
         )}
+
+        {commitGenerationBudgetLabel ? (
+          <div className="typography-meta text-muted-foreground">
+            {commitGenerationBudgetLabel}
+          </div>
+        ) : null}
+
+        {commitGenerationVariants.length > 0 && onSelectCommitGenerationVariant ? (
+          <div className="rounded-md border border-border bg-muted/30 p-2">
+            <div className="mb-2 typography-meta font-medium text-muted-foreground">
+              Generated variants
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {commitGenerationVariants.map((variant) => (
+                <Button
+                  key={variant.id}
+                  variant={variant.subject === commitMessage.trim() ? 'default' : 'outline'}
+                  size="sm"
+                  type="button"
+                  onClick={() => onSelectCommitGenerationVariant(variant)}
+                  title={variant.detail}
+                >
+                  {variant.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="@container/commit-actions flex items-center gap-2 min-w-0">
           <Button
