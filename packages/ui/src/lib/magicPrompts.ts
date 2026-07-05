@@ -79,6 +79,7 @@ const MAGIC_PROMPT_DEFINITIONS: readonly MagicPromptDefinition[] = [
     description: 'Hidden instructions for commit message generation.',
     placeholders: [
       { key: 'selected_files', description: 'Bullet list of currently selected file paths.' },
+      { key: 'diff_context', description: 'Bounded staged diff excerpts and status metadata for selected files.' },
     ],
     template: `Return exactly one JSON object and nothing else. Do not include prose, markdown, explanations, or code fences.
 
@@ -90,12 +91,17 @@ Rules:
 - allowed types: feat, fix, refactor, perf, docs, test, build, ci, chore, style, revert
 - no scope in subject
 - keep subject concise and user-facing
+- prefer the bounded staged diff context over guessing from file names alone
+- mention docs/config/test-only changes accurately when the diff context shows them
 - highlights: 0-3 concise user-facing points
 - use double quotes for all JSON strings
 - do not include trailing commas or comments
 
 Selected files:
-{{selected_files}}`,
+{{selected_files}}
+
+Bounded staged diff context:
+{{diff_context}}`,
   },
   {
     id: 'git.pr.generate.visible',

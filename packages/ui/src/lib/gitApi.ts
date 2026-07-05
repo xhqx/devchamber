@@ -6,6 +6,7 @@ import { materializeOpenDraftSession, useSessionUIStore } from '@/sync/session-u
 import { useSelectionStore } from '@/sync/selection-store';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { getRegisteredRuntimeAPIs } from '@/contexts/runtimeAPIRegistry';
+import { buildCommitGenerationPromptContext, type CommitGenerationDiffEntry } from './commitGenerationContext';
 
 export type {
   GitStatus,
@@ -210,6 +211,34 @@ export async function deleteRemoteBranch(directory: string, payload: import('./a
   return gitHttp.deleteRemoteBranch(directory, payload);
 }
 
+const COMMIT_GENERATION_DIFF_CONTEXT_LINES = 3;
+const COMMIT_GENERATION_DIFF_PROMPT_BUDGET = 40_000;
+
+const buildCommitGenerationContextForFiles = async (directory: string, files: string[]) => {
+  const [status, diffEntries] = await Promise.all([
+    getGitStatus(directory, { mode: 'light' }).catch(() => null),
+    Promise.all(files.map(async (file): Promise<CommitGenerationDiffEntry> => {
+      try {
+        const response = await getGitDiff(directory, {
+          path: file,
+          staged: true,
+          contextLines: COMMIT_GENERATION_DIFF_CONTEXT_LINES,
+        });
+        return { path: file, diff: response.diff };
+      } catch (error) {
+        return { path: file, error: error instanceof Error ? error.message : 'unknown error' };
+      }
+    })),
+  ]);
+
+  return buildCommitGenerationPromptContext({
+    files,
+    statusFiles: status?.files ?? [],
+    diffs: diffEntries,
+    maxChars: COMMIT_GENERATION_DIFF_PROMPT_BUDGET,
+  });
+};
+
 export async function generateCommitMessage(
   directory: string,
   files: string[],
@@ -232,9 +261,12 @@ export async function generateCommitMessage(
     agent: generationSession.agent,
   });
 
+  const promptContext = await buildCommitGenerationContextForFiles(directory, files);
+
   const visiblePrompt = await renderMagicPrompt('git.commit.generate.visible');
   const hiddenPrompt = await renderMagicPrompt('git.commit.generate.instructions', {
-    selected_files: files.map((file) => `- ${file}`).join('\n'),
+    selected_files: promptContext.selectedFiles,
+    diff_context: promptContext.diffContext,
   });
 
   try {
