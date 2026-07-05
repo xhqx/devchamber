@@ -216,7 +216,7 @@ export async function generateCommitMessage(
   options?: { zenModel?: string; providerId?: string; modelId?: string }
 ): Promise<{ message: import('./api/types').GeneratedCommitMessage }> {
   const startedAt = Date.now();
-  const generationSession = await resolveGenerationSessionContext();
+  const generationSession = await resolveGenerationSessionContext(options);
 
   console.info('[git-generation][browser] request', {
     transport: 'session',
@@ -382,12 +382,31 @@ type SessionGenerationContext = {
   variant?: string;
 };
 
+type GenerationModelOptions = { zenModel?: string; providerId?: string; modelId?: string };
+
 const GENERATION_CONFIG_ERROR = 'No default provider or model configured. Please select a provider and model in settings first.';
 
-async function resolveGenerationSessionContext(): Promise<SessionGenerationContext> {
+const applyGenerationModelOptions = (
+  context: SessionGenerationContext,
+  options?: GenerationModelOptions,
+): SessionGenerationContext => {
+  const providerID = options?.providerId?.trim();
+  const modelID = (options?.modelId ?? options?.zenModel)?.trim();
+  if (!providerID || !modelID) {
+    return context;
+  }
+  return {
+    ...context,
+    providerID,
+    modelID,
+    variant: undefined,
+  };
+};
+
+async function resolveGenerationSessionContext(options?: GenerationModelOptions): Promise<SessionGenerationContext> {
   const activeSession = resolveSessionGenerationContext();
   if (activeSession) {
-    return activeSession;
+    return applyGenerationModelOptions(activeSession, options);
   }
 
   const draft = useSessionUIStore.getState().newSessionDraft;

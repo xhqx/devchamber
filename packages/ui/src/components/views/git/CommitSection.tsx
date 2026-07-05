@@ -7,6 +7,8 @@ import { Icon } from "@/components/icon/Icon";
 import { useI18n } from '@/lib/i18n';
 import type { CommitSuggestion } from '@/lib/autocomplete/commitScopes';
 import type { CommitGenerationVariant } from '@/lib/commitGeneration';
+import { GenerationModelPicker } from './GenerationModelPicker';
+import type { GenerationModelSelection, ProviderWithModels } from '@/lib/generationModelSelection';
 
 type CommitAction = 'commit' | 'commitAndPush' | null;
 
@@ -29,6 +31,10 @@ interface CommitSectionProps {
   commitGenerationVariants?: CommitGenerationVariant[];
   onSelectCommitGenerationVariant?: (variant: CommitGenerationVariant) => void;
   commitGenerationBudgetLabel?: string | null;
+  generationModelProviders?: ProviderWithModels[];
+  generationModelSelection?: GenerationModelSelection | null;
+  resolvedGenerationModel?: GenerationModelSelection | null;
+  onGenerationModelSelectionChange?: (selection: GenerationModelSelection | null) => void;
 }
 
 export const CommitSection: React.FC<CommitSectionProps> = ({
@@ -50,6 +56,10 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
   commitGenerationVariants = [],
   onSelectCommitGenerationVariant,
   commitGenerationBudgetLabel = null,
+  generationModelProviders = [],
+  generationModelSelection = null,
+  resolvedGenerationModel = null,
+  onGenerationModelSelectionChange,
 }) => {
   const { t } = useI18n();
   const hasStagedFiles = stagedCount > 0;
@@ -76,6 +86,16 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
           highlights={generatedHighlights}
           onInsert={onInsertHighlights}
         />
+
+        {onGenerationModelSelectionChange ? (
+          <GenerationModelPicker
+            providers={generationModelProviders}
+            value={generationModelSelection}
+            resolvedValue={resolvedGenerationModel}
+            onChange={onGenerationModelSelectionChange}
+            disabled={commitAction !== null || isGeneratingMessage}
+          />
+        ) : null}
 
         <CommitInput
           value={commitMessage}

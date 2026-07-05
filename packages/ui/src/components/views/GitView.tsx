@@ -69,6 +69,7 @@ import {
   type CommitGenerationVariant,
 } from '@/lib/commitGeneration';
 import { sessionEvents } from '@/lib/sessionEvents';
+import type { GenerationModelSelection } from '@/lib/generationModelSelection';
 import { useI18n } from '@/lib/i18n';
 
 type SyncAction = 'fetch' | 'pull' | 'push' | 'sync' | null;
@@ -496,6 +497,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
 
   const settingsGitmojiEnabled = useConfigStore((state) => state.settingsGitmojiEnabled);
   const settingsForkFeatures = useConfigStore((state) => state.settingsForkFeatures);
+  const providers = useConfigStore((state) => state.providers);
   const getResolvedGitGenerationModel = useConfigStore((state) => state.getResolvedGitGenerationModel);
   const commitAutocompleteEnabled = settingsForkFeatures.autocomplete.enabled;
   const commitGenerationSettings = settingsForkFeatures.commitGeneration;
@@ -567,6 +569,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   );
   const [commitGenerationVariants, setCommitGenerationVariants] = React.useState<CommitGenerationVariant[]>([]);
   const [commitGenerationBudgetLabel, setCommitGenerationBudgetLabel] = React.useState<string | null>(null);
+  const [commitGenerationModelSelection, setCommitGenerationModelSelection] = React.useState<GenerationModelSelection | null>(null);
   const hasPendingIndexMutation = movingChangePaths.size > 0 || gitIndexMutationQueue.size() > 0 || gitIndexMutationQueue.isRunning();
 
   const scrollActionPanelToBottom = React.useCallback(() => {
@@ -1247,7 +1250,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
 
     setIsGeneratingMessage(true);
     try {
-      const resolvedModel = getResolvedGitGenerationModel();
+      const resolvedModel = commitGenerationModelSelection ?? getResolvedGitGenerationModel();
       const { message } = await generateSessionCommitMessage(currentDirectory, fileBudget.includedFiles, resolvedModel ?? undefined);
       const subject = message.subject?.trim() ?? '';
       const highlights = Array.isArray(message.highlights) ? message.highlights : [];
@@ -1294,6 +1297,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     stagedChangeEntries,
     commitGenerationSettings.maxFiles,
     commitGenerationSettings.variantsEnabled,
+    commitGenerationModelSelection,
     getResolvedGitGenerationModel,
     settingsGitmojiEnabled,
     gitmojiEmojis,
@@ -2526,6 +2530,10 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
                         commitGenerationVariants={commitGenerationVariants}
                         onSelectCommitGenerationVariant={handleSelectCommitGenerationVariant}
                         commitGenerationBudgetLabel={commitGenerationBudgetLabel}
+                        generationModelProviders={providers}
+                        generationModelSelection={commitGenerationModelSelection}
+                        resolvedGenerationModel={getResolvedGitGenerationModel()}
+                        onGenerationModelSelectionChange={setCommitGenerationModelSelection}
                       />
                     </>
                   ) : (
