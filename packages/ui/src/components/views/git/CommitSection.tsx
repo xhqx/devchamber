@@ -5,6 +5,7 @@ import { useDeviceInfo } from '@/lib/device';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Icon } from "@/components/icon/Icon";
 import { useI18n } from '@/lib/i18n';
+import type { CommitSuggestion } from '@/lib/autocomplete/commitScopes';
 
 type CommitAction = 'commit' | 'commitAndPush' | null;
 
@@ -22,6 +23,8 @@ interface CommitSectionProps {
   hasPendingIndexMutation?: boolean;
   gitmojiEnabled: boolean;
   onOpenGitmojiPicker: () => void;
+  commitSuggestions?: CommitSuggestion[];
+  autocompleteEnabled?: boolean;
 }
 
 export const CommitSection: React.FC<CommitSectionProps> = ({
@@ -38,6 +41,8 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
   hasPendingIndexMutation = false,
   gitmojiEnabled,
   onOpenGitmojiPicker,
+  commitSuggestions = [],
+  autocompleteEnabled = false,
 }) => {
   const { t } = useI18n();
   const hasStagedFiles = stagedCount > 0;
@@ -72,6 +77,8 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
           disabled={commitAction !== null}
           hasTouchInput={hasTouchInput}
           isMobile={isMobile}
+          suggestions={commitSuggestions}
+          autocompleteEnabled={autocompleteEnabled}
         />
 
         {gitmojiEnabled && (

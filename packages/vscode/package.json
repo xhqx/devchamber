@@ -215,6 +215,56 @@
           "type": "string",
           "default": "",
           "description": "%configuration.opencodeBinary.description%"
+        },
+        "openchamber.fork.autoApprove.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%configuration.fork.autoApprove.enabled.description%"
+        },
+        "openchamber.fork.autoApprove.timeoutSeconds": {
+          "type": "number",
+          "default": 30,
+          "minimum": 5,
+          "maximum": 600,
+          "description": "%configuration.fork.autoApprove.timeoutSeconds.description%"
+        },
+        "openchamber.fork.autoApprove.allowedTools": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "%configuration.fork.autoApprove.allowedTools.description%"
+        },
+        "openchamber.fork.docs.requiredOnCodeChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.fork.docs.requiredOnCodeChange.description%"
+        },
+        "openchamber.fork.modelFallback.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.fork.modelFallback.enabled.description%"
+        },
+        "openchamber.fork.modelFallback.chain": {
+          "type": "array",
+          "default": [],
+          "description": "%configuration.fork.modelFallback.chain.description%"
+        },
+        "openchamber.fork.repoIndex.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.fork.repoIndex.enabled.description%"
+        },
+        "openchamber.fork.kanban.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.fork.kanban.enabled.description%"
+        },
+        "openchamber.fork.autocomplete.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.fork.autocomplete.enabled.description%"
         }
       }
     }

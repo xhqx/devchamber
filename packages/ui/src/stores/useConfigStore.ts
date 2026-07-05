@@ -14,6 +14,8 @@ import { getRegisteredRuntimeAPIs } from "@/contexts/runtimeAPIRegistry";
 import { updateDesktopSettings } from "@/lib/persistence";
 import { useDirectoryStore } from "@/stores/useDirectoryStore";
 import { useProjectsStore } from "@/stores/useProjectsStore";
+import type { ForkFeatureSettings } from "@/lib/forkFeatures";
+import { normalizeForkFeatureSettings } from "@/lib/forkFeatures";
 import { resolveProjectForSessionDirectory } from "@/lib/projectResolution";
 import { streamDebugEnabled } from "@/stores/utils/streamDebug";
 import { parseModelIdentifier } from "@/lib/modelIdentifier";
@@ -63,6 +65,7 @@ interface OpenChamberDefaults {
     sttModel?: string;
     sttLocalModel?: string;
     sttLanguage?: string;
+    forkFeatures?: ForkFeatureSettings;
 }
 
 const fetchOpenChamberDefaults = async (): Promise<OpenChamberDefaults> => {
@@ -101,6 +104,7 @@ const fetchOpenChamberDefaults = async (): Promise<OpenChamberDefaults> => {
                     const sttModel = typeof data?.sttModel === 'string' ? data.sttModel.trim() : undefined;
                     const sttLocalModel = typeof data?.sttLocalModel === 'string' ? data.sttLocalModel.trim() : undefined;
                     const sttLanguage = typeof data?.sttLanguage === 'string' ? data.sttLanguage.trim() : undefined;
+                    const forkFeatures = normalizeForkFeatureSettings(data?.forkFeatures ?? data);
 
                     return finish('runtime-settings', {
                         defaultModel: defaultModel.length > 0 ? defaultModel : undefined,
@@ -116,6 +120,7 @@ const fetchOpenChamberDefaults = async (): Promise<OpenChamberDefaults> => {
                         sttModel,
                         sttLocalModel,
                         sttLanguage,
+                        forkFeatures,
                     });
                 }
             } catch {
@@ -147,6 +152,7 @@ const fetchOpenChamberDefaults = async (): Promise<OpenChamberDefaults> => {
         const sttModel = typeof data?.sttModel === 'string' ? data.sttModel.trim() : undefined;
         const sttLocalModel = typeof data?.sttLocalModel === 'string' ? data.sttLocalModel.trim() : undefined;
         const sttLanguage = typeof data?.sttLanguage === 'string' ? data.sttLanguage.trim() : undefined;
+        const forkFeatures = normalizeForkFeatureSettings(data?.forkFeatures ?? data);
 
         return finish('settings-route', {
             defaultModel: defaultModel.length > 0 ? defaultModel : undefined,
@@ -162,6 +168,7 @@ const fetchOpenChamberDefaults = async (): Promise<OpenChamberDefaults> => {
             sttModel,
             sttLocalModel,
             sttLanguage,
+            forkFeatures,
         });
     } catch (error) {
         markStartupTrace('config.defaults:error', { error: error instanceof Error ? error.message : String(error) });
@@ -979,6 +986,7 @@ interface ConfigStore {
     settingsDefaultFileViewerPreview: boolean;
     settingsZenModel: string | undefined;
     settingsMessageStreamTransport: 'auto' | 'ws' | 'sse';
+    settingsForkFeatures: ForkFeatureSettings;
     // Voice provider preference ('browser', 'openai', 'openai-compatible', or 'say' for macOS)
     voiceProvider: 'browser' | 'local' | 'openai' | 'openai-compatible' | 'say';
     setVoiceProvider: (provider: 'browser' | 'local' | 'openai' | 'openai-compatible' | 'say') => void;
@@ -1059,6 +1067,7 @@ interface ConfigStore {
     setSettingsDefaultFileViewerPreview: (enabled: boolean) => void;
     setSettingsZenModel: (model: string | undefined) => void;
     setSettingsMessageStreamTransport: (transport: 'auto' | 'ws' | 'sse') => void;
+    setSettingsForkFeatures: (features: ForkFeatureSettings) => void;
     getResolvedGitGenerationModel: () => { providerId: string; modelId: string } | null;
     saveAgentModelSelection: (agentName: string, providerId: string, modelId: string) => void;
     getAgentModelSelection: (agentName: string) => { providerId: string; modelId: string } | null;
@@ -1119,6 +1128,7 @@ export const useConfigStore = create<ConfigStore>()(
                 settingsDefaultFileViewerPreview: false,
                 settingsZenModel: undefined,
                 settingsMessageStreamTransport: 'auto',
+                settingsForkFeatures: normalizeForkFeatureSettings(undefined),
                 // Voice provider preference - load from localStorage or default to 'browser'
                 voiceProvider: (() => {
                     if (typeof window !== 'undefined') {
@@ -2027,6 +2037,7 @@ export const useConfigStore = create<ConfigStore>()(
                                     settingsDefaultFileViewerPreview: openChamberDefaults.defaultFileViewerPreview ?? false,
                                     settingsZenModel: resolvedZenModel,
                                     settingsMessageStreamTransport: openChamberDefaults.messageStreamTransport ?? state.settingsMessageStreamTransport ?? 'auto',
+                                    settingsForkFeatures: openChamberDefaults.forkFeatures ?? state.settingsForkFeatures,
                                     sttProvider: openChamberDefaults.sttProvider ?? state.sttProvider,
                                     sttServerUrl: openChamberDefaults.sttServerUrl ?? state.sttServerUrl,
                                     sttModel: openChamberDefaults.sttModel ?? state.sttModel,
@@ -2761,6 +2772,10 @@ export const useConfigStore = create<ConfigStore>()(
                     set({ settingsMessageStreamTransport: transport });
                 },
 
+                setSettingsForkFeatures: (features: ForkFeatureSettings) => {
+                    set({ settingsForkFeatures: normalizeForkFeatureSettings(features) });
+                },
+
                 getResolvedGitGenerationModel: () => {
                     const state = get();
                     return resolveGitGenerationModelSelection({
@@ -3277,6 +3292,7 @@ export const useConfigStore = create<ConfigStore>()(
                     settingsDefaultFileViewerPreview: state.settingsDefaultFileViewerPreview,
                     settingsZenModel: state.settingsZenModel,
                     settingsMessageStreamTransport: state.settingsMessageStreamTransport,
+                    settingsForkFeatures: state.settingsForkFeatures,
                     speechRate: state.speechRate,
                     speechPitch: state.speechPitch,
                     speechVolume: state.speechVolume,

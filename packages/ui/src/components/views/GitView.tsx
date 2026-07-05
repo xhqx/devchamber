@@ -62,6 +62,7 @@ import type { GitRemote } from '@/lib/gitApi';
 import { getRootBranch } from '@/lib/worktrees/worktreeStatus';
 import { cn } from '@/lib/utils';
 import { generateCommitMessage as generateSessionCommitMessage, getGitWorktreeBootstrapStatus } from '@/lib/gitApi';
+import { buildCommitSuggestions } from '@/lib/autocomplete/commitScopes';
 import { sessionEvents } from '@/lib/sessionEvents';
 import { useI18n } from '@/lib/i18n';
 
@@ -489,6 +490,8 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   }, [currentDirectory]);
 
   const settingsGitmojiEnabled = useConfigStore((state) => state.settingsGitmojiEnabled);
+  const settingsForkFeatures = useConfigStore((state) => state.settingsForkFeatures);
+  const commitAutocompleteEnabled = settingsForkFeatures.autocomplete.enabled;
   const [rootBranchHint, setRootBranchHint] = React.useState<string | null>(null);
   const { gitmojis: gitmojiEmojis } = useGitmojiList(settingsGitmojiEnabled);
 
@@ -966,6 +969,17 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     () => changeEntries.filter(isUnstagedStatusFile),
     [changeEntries]
   );
+
+  const commitSuggestions = React.useMemo(() => {
+    if (!commitAutocompleteEnabled || stagedChangeEntries.length === 0) {
+      return [];
+    }
+
+    return buildCommitSuggestions({
+      files: stagedChangeEntries.map((entry) => entry.path),
+      currentValue: commitMessage,
+    });
+  }, [commitAutocompleteEnabled, commitMessage, stagedChangeEntries]);
 
   React.useEffect(() => {
     if (!currentDirectory || changeEntries.length === 0) {
@@ -2469,6 +2483,8 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
                         hasPendingIndexMutation={hasPendingIndexMutation}
                         gitmojiEnabled={settingsGitmojiEnabled}
                         onOpenGitmojiPicker={() => setIsGitmojiPickerOpen(true)}
+                        commitSuggestions={commitSuggestions}
+                        autocompleteEnabled={commitAutocompleteEnabled}
                       />
                     </>
                   ) : (

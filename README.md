@@ -27,6 +27,10 @@
 
 </details>
 
+## DevChamber fork
+
+This fork is an agentic IDE layer on top of OpenChamber. Fork-only work is tracked in `docs/fork/ROADMAP.md` and kept behind `openchamber.fork.*` settings so the codebase can stay close to upstream. Current fork priorities are explicit model/fallback selection for generation, safe scoped auto-approval, docs/change explanations, repo indexing, autocomplete, and a project-local Kanban board.
+
 ## Why use OpenChamber?
 
 - **Cross-device continuity**: Start in TUI, continue on tablet/phone, return to terminal - same session

@@ -16,5 +16,14 @@
   "command.showSettings.title": "Paramètres",
   "command.attachExplorerToChat.title": "Joindre au chat OpenChamber",
   "configuration.apiUrl.description": "URL d’un serveur API OpenCode externe. Laissez vide pour démarrer automatiquement une instance locale.",
-  "configuration.opencodeBinary.description": "Chemin absolu facultatif vers le binaire CLI opencode. Utile si la recherche PATH échoue. Nécessite de recharger la fenêtre ou de redémarrer l’API pour être pris en compte."
+  "configuration.opencodeBinary.description": "Chemin absolu facultatif vers le binaire CLI opencode. Utile si la recherche PATH échoue. Nécessite de recharger la fenêtre ou de redémarrer l’API pour être pris en compte.",
+  "configuration.fork.autoApprove.enabled.description": "Activer l'approbation automatique limitée pour les demandes d'autorisation éligibles. Désactivé par défaut.",
+  "configuration.fork.autoApprove.timeoutSeconds.description": "Nombre de secondes d'affichage du compte à rebours avant d'approuver une demande éligible.",
+  "configuration.fork.autoApprove.allowedTools.description": "Noms des outils pouvant être approuvés automatiquement lorsque toutes les autres règles passent.",
+  "configuration.fork.docs.requiredOnCodeChange.description": "Exiger une décision de mise à jour de documentation lorsque des changements de code sont détectés.",
+  "configuration.fork.modelFallback.enabled.description": "Activer les chaînes de repli pour les générations sûres et idempotentes.",
+  "configuration.fork.modelFallback.chain.description": "Configuration des modèles de repli pour commit, PR, autocomplétion, documentation et chat.",
+  "configuration.fork.repoIndex.enabled.description": "Activer l'index du dépôt utilisé par l'autocomplétion, le contexte et la couverture documentaire.",
+  "configuration.fork.kanban.enabled.description": "Activer le tableau Kanban local au projet.",
+  "configuration.fork.autocomplete.enabled.description": "Activer les sources d'autocomplétion du fork pour les prompts et messages de commit."
 }
