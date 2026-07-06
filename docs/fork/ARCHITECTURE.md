@@ -19,7 +19,7 @@ Safe defaults:
 - `packages/ui/src/lib/autoApprovePolicy.ts` — safe auto-approval policy model and evaluator.
 - `packages/ui/src/lib/changeExplanations/*` — pure schema, store, code-change detection, docs-commit status, project-local change-note persistence, and structured explanation generation helpers for IDE explanations and docs-required decisions.
 - `packages/ui/src/components/changeExplanations/*` — UI surfaces for generated change notes, including grouped file/diff comments, docs status chips, and follow-up actions used by diff review panels.
-- `packages/ui/src/lib/autocomplete/*` — conventional commit suggestion helpers plus prompt-composer source ranking for `@file`, `#symbol`, `/command`, and `task:` autocomplete.
+- `packages/ui/src/lib/autocomplete/*` and `packages/ui/src/components/autocomplete/*` — conventional commit suggestion helpers plus prompt-composer source ranking/menu primitives for `@file`, `#symbol`, `/command`, and `task:` autocomplete.
 - `packages/ui/src/lib/repoIndex/*` — pure repository index schema, ignore rules, and indexing helpers for future runtime bridges, autocomplete sources, docs coverage, task links, and context selection.
 
 ## Project-local data
