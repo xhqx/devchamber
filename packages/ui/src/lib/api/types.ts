@@ -574,6 +574,22 @@ export interface CommandExecResult {
   error?: string;
 }
 
+export interface RepoIndexScanFile {
+  path: string;
+  relativePath: string;
+  size: number;
+  mtimeMs: number;
+  content?: string;
+}
+
+export interface RepoIndexScanOptions {
+  directory?: string;
+  maxFiles?: number;
+  maxFileSize?: number;
+  includeContent?: boolean;
+  respectGitignore?: boolean;
+}
+
 interface ListDirectoryOptions {
   respectGitignore?: boolean;
 }
@@ -597,6 +613,7 @@ export interface FilesAPI {
   rename?(oldPath: string, newPath: string): Promise<{ success: boolean; path: string }>;
   revealPath?(path: string): Promise<{ success: boolean }>;
   execCommands?(commands: string[], cwd: string): Promise<{ success: boolean; results: CommandExecResult[] }>;
+  scanRepoIndex?(options?: RepoIndexScanOptions): Promise<{ directory: string; files: RepoIndexScanFile[]; truncated: boolean }>;
   downloadFile?(path: string): Promise<void>;
 }
 

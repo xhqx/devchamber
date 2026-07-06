@@ -23,6 +23,7 @@ import {
   listDirectoryEntries,
   normalizeFsPath,
   searchDirectory,
+  scanRepoIndexFiles,
   resolveFileReadPath,
   fetchModelsMetadata,
 } from './bridge-fs-helpers-runtime';
@@ -83,6 +84,7 @@ export async function handleBridgeMessage(message: BridgeRequest, ctx?: BridgeCo
         normalizeFsPath,
         execGit,
         searchDirectory,
+        scanRepoIndexFiles,
         resolveFileReadPath,
         parseDroppedFileReference,
         readUriAsAttachment,

@@ -4,6 +4,7 @@ import type {
   FileSearchQuery,
   FileSearchResult,
   FilesAPI,
+  RepoIndexScanFile,
 } from '@openchamber/ui/lib/api/types';
 
 import { sendBridgeMessage, sendBridgeMessageWithOptions } from './bridge';
@@ -130,6 +131,28 @@ export const createVSCodeFilesAPI = (): FilesAPI => ({
     return {
       success: Boolean(data?.success),
       results: Array.isArray(data?.results) ? data.results : [],
+    };
+  },
+
+  async scanRepoIndex(options = {}): Promise<{ directory: string; files: RepoIndexScanFile[]; truncated: boolean }> {
+    const directory = typeof options.directory === 'string' ? normalizePath(options.directory) : undefined;
+    const data = await sendBridgeMessageWithOptions<{
+      directory?: string;
+      files?: RepoIndexScanFile[];
+      truncated?: boolean;
+    }>('api:fs:scan-repo-index', {
+      ...options,
+      directory,
+    }, { timeoutMs: 300000 });
+
+    return {
+      directory: normalizePath(data?.directory || directory || ''),
+      files: Array.isArray(data?.files) ? data.files.map((file) => ({
+        ...file,
+        path: normalizePath(file.path),
+        relativePath: normalizePath(file.relativePath),
+      })) : [],
+      truncated: Boolean(data?.truncated),
     };
   },
 

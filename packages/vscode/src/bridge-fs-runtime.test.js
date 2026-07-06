@@ -41,6 +41,7 @@ const deps = {
   normalizeFsPath: (value) => value,
   execGit: mock(),
   searchDirectory: mock(),
+  scanRepoIndexFiles: mock(),
   resolveFileReadPath: mock(),
   parseDroppedFileReference: mock(),
   readUriAsAttachment: mock(),
@@ -84,5 +85,43 @@ describe('bridge fs exec git read cache', () => {
     await handleFsBridgeMessage({ id: '2', type: 'api:fs:exec', payload: { commands: [command], cwd } }, deps);
 
     expect(execCalls).toHaveLength(2);
+  });
+});
+
+describe('bridge fs repo index scan', () => {
+  beforeEach(() => {
+    deps.scanRepoIndexFiles.mockReset();
+  });
+
+  it('forwards bounded repo index scan options through the fs bridge', async () => {
+    deps.scanRepoIndexFiles.mockResolvedValueOnce({
+      directory: '/workspace',
+      truncated: false,
+      files: [{ path: '/workspace/src/index.ts', relativePath: 'src/index.ts', size: 42, mtimeMs: 1234, content: 'export const ok = true;' }],
+    });
+
+    const response = await handleFsBridgeMessage({
+      id: 'scan',
+      type: 'api:fs:scan-repo-index',
+      payload: { directory: '/workspace', maxFiles: 50, maxFileSize: 1000, includeContent: false },
+    }, deps);
+
+    expect(deps.scanRepoIndexFiles).toHaveBeenCalledWith({
+      directory: '/workspace',
+      maxFiles: 50,
+      maxFileSize: 1000,
+      includeContent: false,
+      respectGitignore: true,
+    });
+    expect(response).toMatchObject({
+      id: 'scan',
+      type: 'api:fs:scan-repo-index',
+      success: true,
+      data: {
+        directory: '/workspace',
+        truncated: false,
+        files: [{ relativePath: 'src/index.ts', size: 42 }],
+      },
+    });
   });
 });

@@ -519,6 +519,64 @@ export const searchDirectory = async (
   return searchFilesystemFiles(rootPath, sanitizedQuery, limit, includeHidden, respectGitignore, 1500);
 };
 
+export type RepoIndexScanFile = {
+  path: string;
+  relativePath: string;
+  size: number;
+  mtimeMs: number;
+  content?: string;
+};
+
+export const scanRepoIndexFiles = async ({
+  directory = '',
+  maxFiles = 2000,
+  maxFileSize = 512 * 1024,
+  includeContent = true,
+  respectGitignore = true,
+}: {
+  directory?: string;
+  maxFiles?: number;
+  maxFileSize?: number;
+  includeContent?: boolean;
+  respectGitignore?: boolean;
+} = {}): Promise<{ directory: string; files: RepoIndexScanFile[]; truncated: boolean }> => {
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || os.homedir();
+  const rootPath = directory ? resolveUserPath(directory, workspaceRoot) : workspaceRoot;
+  const limit = Math.max(1, Math.min(10000, Math.floor(maxFiles)));
+  const fileSizeLimit = Math.max(1024, Math.min(5 * 1024 * 1024, Math.floor(maxFileSize)));
+  const candidates = await searchFilesystemFiles(rootPath, '', limit + 1, false, respectGitignore, 5000);
+  const selected = candidates.slice(0, limit);
+
+  const files = await Promise.all(selected.map(async (candidate): Promise<RepoIndexScanFile | null> => {
+    try {
+      const stats = await fs.promises.stat(candidate.path);
+      if (!stats.isFile()) return null;
+      const result: RepoIndexScanFile = {
+        path: normalizeFsPath(candidate.path),
+        relativePath: normalizeFsPath(candidate.relativePath),
+        size: stats.size,
+        mtimeMs: stats.mtimeMs,
+      };
+      if (includeContent && stats.size <= fileSizeLimit) {
+        try {
+          result.content = await fs.promises.readFile(candidate.path, 'utf8');
+        } catch {
+          // Binary or unreadable files still contribute metadata.
+        }
+      }
+      return result;
+    } catch {
+      return null;
+    }
+  }));
+
+  return {
+    directory: normalizeFsPath(rootPath),
+    files: files.filter((entry): entry is RepoIndexScanFile => Boolean(entry)),
+    truncated: candidates.length > limit,
+  };
+};
+
 export const fetchModelsMetadata = async () => {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
   const timeout = controller ? setTimeout(() => controller.abort(), 8000) : undefined;

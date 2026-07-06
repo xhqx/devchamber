@@ -114,6 +114,17 @@ type FsDeps = {
     includeHidden: boolean,
     respectGitignore: boolean,
   ) => Promise<Array<{ name: string; path: string; relativePath: string; extension: string | undefined }>>;
+  scanRepoIndexFiles: (options?: {
+    directory?: string;
+    maxFiles?: number;
+    maxFileSize?: number;
+    includeContent?: boolean;
+    respectGitignore?: boolean;
+  }) => Promise<{
+    directory: string;
+    files: Array<{ path: string; relativePath: string; size: number; mtimeMs: number; content?: string }>;
+    truncated: boolean;
+  }>;
   resolveFileReadPath: (inputPath: string) => Promise<
     | { ok: true; resolvedPath: string }
     | { ok: false; status: number; error: string }
@@ -236,6 +247,24 @@ export async function handleFsBridgeMessage(
       };
       const files = await deps.searchDirectory(directory, query, limit, Boolean(includeHidden), respectGitignore !== false);
       return { id, type, success: true, data: { files } };
+    }
+
+    case 'api:fs:scan-repo-index': {
+      const { directory = '', maxFiles, maxFileSize, includeContent, respectGitignore } = (payload || {}) as {
+        directory?: string;
+        maxFiles?: number;
+        maxFileSize?: number;
+        includeContent?: boolean;
+        respectGitignore?: boolean;
+      };
+      const result = await deps.scanRepoIndexFiles({
+        directory,
+        maxFiles,
+        maxFileSize,
+        includeContent: includeContent !== false,
+        respectGitignore: respectGitignore !== false,
+      });
+      return { id, type, success: true, data: result };
     }
 
     case 'api:fs:mkdir': {
