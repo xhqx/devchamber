@@ -20,6 +20,7 @@ import {
   toPierreAnnotationId,
   useInlineCommentController,
 } from '@/components/comments';
+import type { ChangeExplanation } from '@/lib/changeExplanations/schema';
 
 import { useOptionalThemeSystem } from '@/contexts/useThemeSystem';
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
@@ -44,6 +45,7 @@ interface PierreDiffViewerProps {
   wrapLines?: boolean;
   layout?: 'fill' | 'inline';
   enableComments?: boolean;
+  changeExplanations?: ChangeExplanation[];
 }
 
 /**
@@ -470,6 +472,7 @@ export const PierreDiffViewer: React.FC<PierreDiffViewerProps> = ({
   wrapLines,
   layout = 'fill',
   enableComments = true,
+  changeExplanations = [],
 }) => {
   const themeContext = useOptionalThemeSystem();
 
@@ -1087,9 +1090,24 @@ export const PierreDiffViewer: React.FC<PierreDiffViewerProps> = ({
     />
   ) : null;
 
+  const explanationStrip = changeExplanations.length > 0 ? (
+    <div className="flex flex-wrap items-center gap-1 border-b border-border/40 bg-muted/30 px-3 py-1.5 typography-meta text-muted-foreground">
+      <span className="font-medium text-foreground">Change notes:</span>
+      {changeExplanations.slice(0, 3).map((explanation) => (
+        <span key={explanation.id} className="max-w-80 truncate rounded-full border border-border/60 bg-background px-2 py-0.5" title={explanation.summary}>
+          {explanation.summary}
+        </span>
+      ))}
+      {changeExplanations.length > 3 ? (
+        <span className="text-muted-foreground">+{changeExplanations.length - 3} more</span>
+      ) : null}
+    </div>
+  ) : null;
+
   if (layout === 'fill') {
     return (
       <div className={cn("flex flex-col relative", "size-full")} data-diff-virtual-root>
+        {explanationStrip}
         <div className="flex-1 relative min-h-0">
           <ScrollableOverlay
             outerClassName="pierre-diff-wrapper size-full"
@@ -1110,10 +1128,11 @@ export const PierreDiffViewer: React.FC<PierreDiffViewerProps> = ({
   // Fallback for 'inline' layout
   return (
     <div className={cn("relative", "w-full")}>
+      {explanationStrip}
       <div ref={diffRootRef} className="pierre-diff-wrapper w-full overflow-x-auto overflow-y-visible relative">
-      <div ref={diffContainerRef} className="w-full" />
+        <div ref={diffContainerRef} className="w-full" />
+      </div>
+      {commentOverlays}
     </div>
-    {commentOverlays}
-  </div>
   );
 };

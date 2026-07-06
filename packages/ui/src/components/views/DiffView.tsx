@@ -39,6 +39,8 @@ import { fileDiffFromPatch } from '@/lib/diff/patchFileDiff';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { startReviewFlow } from '@/lib/reviewFlow';
 import { useSessionUIStore } from '@/sync/session-ui-store';
+import { ChangeCommentsPanel, type ChangeCommentPanelAction } from '@/components/changeExplanations/ChangeCommentsPanel';
+import type { ChangeExplanation } from '@/lib/changeExplanations/schema';
 import type { FileDiffMetadata } from '@pierre/diffs';
 
 // Minimum width for side-by-side diff view (px)
@@ -397,6 +399,7 @@ interface InlineDiffViewerProps {
   diff: DiffData;
   renderSideBySide: boolean;
   wrapLines: boolean;
+  changeExplanations?: ChangeExplanation[];
 }
 
 const InlineDiffViewer = React.memo<InlineDiffViewerProps>(({
@@ -404,6 +407,7 @@ const InlineDiffViewer = React.memo<InlineDiffViewerProps>(({
   diff,
   renderSideBySide,
   wrapLines,
+  changeExplanations = [],
 }) => {
   const language = React.useMemo(
     () => getLanguageFromExtension(filePath) || 'text',
@@ -435,6 +439,7 @@ const InlineDiffViewer = React.memo<InlineDiffViewerProps>(({
         renderSideBySide={renderSideBySide}
         wrapLines={wrapLines}
         layout="inline"
+        changeExplanations={changeExplanations}
       />
     </div>
   );
@@ -549,6 +554,8 @@ interface MultiFileDiffEntryProps {
     onOpenInEditor?: (filePath: string, diffData: DiffData | null) => void;
     staged?: boolean;
     loadFullFiles?: boolean;
+    changeExplanations?: ChangeExplanation[];
+    onChangeExplanationAction?: (action: ChangeCommentPanelAction, explanation: ChangeExplanation) => void;
 }
 
 const MultiFileDiffEntry = React.memo<MultiFileDiffEntryProps>(({
@@ -567,6 +574,8 @@ const MultiFileDiffEntry = React.memo<MultiFileDiffEntryProps>(({
     onOpenInEditor,
     staged = false,
     loadFullFiles = false,
+    changeExplanations = [],
+    onChangeExplanationAction,
 }) => {
     const { t } = useI18n();
     const { git } = useRuntimeAPIs();
@@ -808,6 +817,11 @@ const MultiFileDiffEntry = React.memo<MultiFileDiffEntryProps>(({
                     </div>
                     <div className="relative flex shrink-0 items-center justify-self-end gap-2">
                         {formatDiffTotals(file.insertions, file.deletions)}
+                        {changeExplanations.length > 0 ? (
+                            <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 typography-micro text-primary" title="Generated change explanations">
+                                {changeExplanations.length} note{changeExplanations.length === 1 ? '' : 's'}
+                            </span>
+                        ) : null}
                         {showOpenInEditorAction && onOpenInEditor ? (
                             <Button
                                 variant="ghost"
@@ -891,7 +905,19 @@ const MultiFileDiffEntry = React.memo<MultiFileDiffEntryProps>(({
                                 diff={diffData}
                                 renderSideBySide={renderSideBySide}
                                 wrapLines={wrapLines}
+                                changeExplanations={changeExplanations}
                             />
+                            {changeExplanations.length > 0 ? (
+                                <div className="border-t border-border/40 p-3">
+                                    <ChangeCommentsPanel
+                                        explanations={changeExplanations}
+                                        filePaths={[file.path]}
+                                        selectedFilePath={file.path}
+                                        compact
+                                        onAction={onChangeExplanationAction}
+                                    />
+                                </div>
+                            ) : null}
                             <div className="pointer-events-none absolute bottom-3 right-3 z-20">
                                 <div className="pointer-events-auto">
                                     <FileDiffActions
@@ -921,6 +947,8 @@ interface DiffViewProps {
     targetFilePath?: string | null;
     /** Render diff content flush with the container edges (no outer padding). */
     flushContent?: boolean;
+    changeExplanations?: ChangeExplanation[];
+    onChangeExplanationAction?: (action: ChangeCommentPanelAction, explanation: ChangeExplanation) => void;
 }
 
 export const DiffView: React.FC<DiffViewProps> = ({
@@ -932,6 +960,8 @@ export const DiffView: React.FC<DiffViewProps> = ({
     onDiffScopeChange,
     targetFilePath = null,
     flushContent = false,
+    changeExplanations = [],
+    onChangeExplanationAction,
 }) => {
     const { t } = useI18n();
     const { git, files } = useRuntimeAPIs();
@@ -1020,6 +1050,17 @@ export const DiffView: React.FC<DiffViewProps> = ({
             }))
             .sort((a, b) => a.path.localeCompare(b.path));
     }, [diffScope, status]);
+
+    const changeExplanationsByFile = React.useMemo(() => {
+        const map = new Map<string, ChangeExplanation[]>();
+        for (const explanation of changeExplanations) {
+            const normalized = normalizePath(explanation.filePath);
+            const entries = map.get(normalized) ?? [];
+            entries.push(explanation);
+            map.set(normalized, entries);
+        }
+        return map;
+    }, [changeExplanations]);
 
     const workingFileCount = React.useMemo(() => {
         if (!status?.files) return 0;
@@ -1530,11 +1571,23 @@ export const DiffView: React.FC<DiffViewProps> = ({
                                     }}
                                     staged={getFileStaged(file.path)}
                                     loadFullFiles={loadFullFiles}
+                                    changeExplanations={changeExplanationsByFile.get(normalizePath(file.path)) ?? []}
+                                    onChangeExplanationAction={onChangeExplanationAction}
                                 />
                             ))}
                         </div>
                     </ScrollableOverlay>
                 </div>
+                {changeExplanations.length > 0 ? (
+                    <ChangeCommentsPanel
+                        explanations={changeExplanations}
+                        filePaths={changedFiles.map((file) => file.path)}
+                        selectedFilePath={displayFile}
+                        className="hidden xl:flex xl:w-80 xl:min-w-80 xl:flex-col xl:self-stretch xl:overflow-hidden"
+                        onSelectFile={handleSelectFileAndScroll}
+                        onAction={onChangeExplanationAction}
+                    />
+                ) : null}
             </div>
         );
     };
