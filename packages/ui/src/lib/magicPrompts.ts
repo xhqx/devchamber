@@ -5,6 +5,8 @@ export type MagicPromptId =
   | 'git.commit.generate.instructions'
   | 'git.pr.generate.visible'
   | 'git.pr.generate.instructions'
+  | 'change.explanation.generate.visible'
+  | 'change.explanation.generate.instructions'
   | 'git.conflict.resolve.visible'
   | 'git.conflict.resolve.instructions'
   | 'git.integrate.cherrypick.resolve.visible'
@@ -148,6 +150,44 @@ Commits in range (base...head):
 
 Files changed across these commits:
 {{changed_files}}{{additional_context_block}}`,
+  },
+  {
+    id: 'change.explanation.generate.visible',
+    title: 'Change Explanation Visible Prompt',
+    group: 'Git',
+    description: 'Visible user message for structured change explanation generation.',
+    template: 'Generate a structured explanation for the detected code and documentation changes.',
+  },
+  {
+    id: 'change.explanation.generate.instructions',
+    title: 'Change Explanation Instructions',
+    group: 'Git',
+    description: 'Hidden instructions for generating docs notes and docs-required decisions after code changes.',
+    placeholders: [
+      { key: 'changed_files', description: 'Bullet list of detected code/documentation changes.' },
+      { key: 'diff_context', description: 'Bounded diff or tool context for the detected changes.' },
+    ],
+    template: `Return exactly one JSON object and nothing else. Do not include prose, markdown, explanations, or code fences.
+
+The JSON object must have exactly this shape:
+{"summary": string, "why": string, "risks": string[], "docs": {"required": boolean, "paths": string[], "suggestedPatch"?: string, "reason"?: string}}
+
+Rules:
+- summary: one concise line describing what changed
+- why: explain why this change exists, based only on the detected changes and diff context
+- risks: 0-5 concrete risks or follow-up checks
+- docs.required: true when code behavior/API/config changed and documentation may need updates
+- docs.paths: documentation files touched or likely relevant; use [] when none are known
+- docs.suggestedPatch: optional short markdown patch or snippet only when a documentation update is clearly needed
+- docs.reason: short explanation for why docs are or are not required
+- use double quotes for all JSON strings
+- do not include trailing commas or comments
+
+Detected changes:
+{{changed_files}}
+
+Bounded diff/tool context:
+{{diff_context}}`,
   },
   {
     id: 'github.pr.review.visible',
