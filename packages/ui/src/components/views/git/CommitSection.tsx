@@ -9,6 +9,8 @@ import type { CommitSuggestion } from '@/lib/autocomplete/commitScopes';
 import type { CommitGenerationVariant } from '@/lib/commitGeneration';
 import { GenerationModelPicker } from './GenerationModelPicker';
 import type { GenerationModelSelection, ProviderWithModels } from '@/lib/generationModelSelection';
+import { DocsRequiredBanner } from '@/components/changeExplanations/DocsRequiredBanner';
+import type { DocsCommitStatus } from '@/lib/changeExplanations/docsStatus';
 
 type CommitAction = 'commit' | 'commitAndPush' | null;
 
@@ -35,6 +37,9 @@ interface CommitSectionProps {
   generationModelSelection?: GenerationModelSelection | null;
   resolvedGenerationModel?: GenerationModelSelection | null;
   onGenerationModelSelectionChange?: (selection: GenerationModelSelection | null) => void;
+  docsCommitStatus?: DocsCommitStatus | null;
+  docsNotNeededReason?: string;
+  onDocsNotNeededReasonChange?: (reason: string) => void;
 }
 
 export const CommitSection: React.FC<CommitSectionProps> = ({
@@ -60,10 +65,14 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
   generationModelSelection = null,
   resolvedGenerationModel = null,
   onGenerationModelSelectionChange,
+  docsCommitStatus = null,
+  docsNotNeededReason = '',
+  onDocsNotNeededReasonChange,
 }) => {
   const { t } = useI18n();
   const hasStagedFiles = stagedCount > 0;
-  const canCommit = commitMessage.trim() && hasStagedFiles && commitAction === null && !hasPendingIndexMutation;
+  const isDocsBlocked = Boolean(docsCommitStatus?.isBlocked);
+  const canCommit = commitMessage.trim() && hasStagedFiles && commitAction === null && !hasPendingIndexMutation && !isDocsBlocked;
   const { isMobile, hasTouchInput } = useDeviceInfo();
 
   const containerClassName = 'border-0 bg-transparent rounded-none';
@@ -125,6 +134,14 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
           <div className="typography-meta text-muted-foreground">
             {commitGenerationBudgetLabel}
           </div>
+        ) : null}
+
+        {docsCommitStatus && onDocsNotNeededReasonChange ? (
+          <DocsRequiredBanner
+            status={docsCommitStatus}
+            notNeededReason={docsNotNeededReason}
+            onNotNeededReasonChange={onDocsNotNeededReasonChange}
+          />
         ) : null}
 
         {commitGenerationVariants.length > 0 && onSelectCommitGenerationVariant ? (

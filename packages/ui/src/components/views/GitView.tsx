@@ -71,6 +71,7 @@ import {
 import { sessionEvents } from '@/lib/sessionEvents';
 import type { GenerationModelSelection } from '@/lib/generationModelSelection';
 import { useI18n } from '@/lib/i18n';
+import { buildDocsCommitStatus } from '@/lib/changeExplanations/docsStatus';
 
 type SyncAction = 'fetch' | 'pull' | 'push' | 'sync' | null;
 type CommitAction = 'commit' | 'commitAndPush' | null;
@@ -501,6 +502,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   const getResolvedGitGenerationModel = useConfigStore((state) => state.getResolvedGitGenerationModel);
   const commitAutocompleteEnabled = settingsForkFeatures.autocomplete.enabled;
   const commitGenerationSettings = settingsForkFeatures.commitGeneration;
+  const docsRequiredOnCodeChange = settingsForkFeatures.docs.requiredOnCodeChange;
   const [rootBranchHint, setRootBranchHint] = React.useState<string | null>(null);
   const { gitmojis: gitmojiEmojis } = useGitmojiList(settingsGitmojiEnabled);
 
@@ -532,6 +534,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   const [commitMessage, setCommitMessage] = React.useState(
     initialSnapshot?.commitMessage ?? ''
   );
+  const [docsNotNeededReason, setDocsNotNeededReason] = React.useState('');
   const [visibleChangePaths, setVisibleChangePaths] = React.useState<string[]>([]);
   const [isGitmojiPickerOpen, setIsGitmojiPickerOpen] = React.useState(false);
   const actionPanelScrollRef = React.useRef<HTMLElement | null>(null);
@@ -979,6 +982,24 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     [changeEntries]
   );
 
+  const stagedPathsKey = React.useMemo(
+    () => stagedChangeEntries.map((entry) => entry.path).sort().join('\n'),
+    [stagedChangeEntries]
+  );
+
+  React.useEffect(() => {
+    setDocsNotNeededReason('');
+  }, [currentDirectory, stagedPathsKey]);
+
+  const docsCommitStatus = React.useMemo(
+    () => buildDocsCommitStatus({
+      files: stagedChangeEntries,
+      docsRequiredOnCodeChange,
+      notNeededReason: docsNotNeededReason,
+    }),
+    [docsNotNeededReason, docsRequiredOnCodeChange, stagedChangeEntries]
+  );
+
   const unstagedChangeEntries = React.useMemo(
     () => changeEntries.filter(isUnstagedStatusFile),
     [changeEntries]
@@ -1169,6 +1190,11 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
       return;
     }
 
+    if (docsCommitStatus.isBlocked) {
+      toast.error('Documentation decision required before commit. Update docs or mark docs not needed with a reason.');
+      return;
+    }
+
     const action: CommitAction = options.pushAfter ? 'commitAndPush' : 'commit';
     setCommitAction(action);
 
@@ -1180,6 +1206,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
       bumpIndexRevision(currentDirectory);
       toast.success(t('gitView.toast.commitCreated'));
       setCommitMessage('');
+      setDocsNotNeededReason('');
       clearGeneratedHighlights();
 
       await refreshStatusAndBranches();
@@ -2534,6 +2561,9 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
                         generationModelSelection={commitGenerationModelSelection}
                         resolvedGenerationModel={getResolvedGitGenerationModel()}
                         onGenerationModelSelectionChange={setCommitGenerationModelSelection}
+                        docsCommitStatus={docsCommitStatus}
+                        docsNotNeededReason={docsNotNeededReason}
+                        onDocsNotNeededReasonChange={setDocsNotNeededReason}
                       />
                     </>
                   ) : (
