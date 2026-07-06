@@ -41,6 +41,7 @@ import { startReviewFlow } from '@/lib/reviewFlow';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { ChangeCommentsPanel, type ChangeCommentPanelAction } from '@/components/changeExplanations/ChangeCommentsPanel';
 import type { ChangeExplanation } from '@/lib/changeExplanations/schema';
+import { persistChangeNotesToProject } from '@/lib/changeExplanations/projectNotes';
 import type { FileDiffMetadata } from '@pierre/diffs';
 
 // Minimum width for side-by-side diff view (px)
@@ -984,6 +985,7 @@ export const DiffView: React.FC<DiffViewProps> = ({
     const [scrollRequestNonce, setScrollRequestNonce] = React.useState(0);
     const [reviewDialogOpen, setReviewDialogOpen] = React.useState(false);
     const [reviewFlowSubmitting, setReviewFlowSubmitting] = React.useState(false);
+    const [isSavingChangeNotes, setIsSavingChangeNotes] = React.useState(false);
 
     const pendingDiffFile = useUIStore((state) => state.pendingDiffFile);
     const pendingDiffStaged = useUIStore((state) => state.pendingDiffStaged);
@@ -1061,6 +1063,28 @@ export const DiffView: React.FC<DiffViewProps> = ({
         }
         return map;
     }, [changeExplanations]);
+
+    const handleSaveChangeNotes = React.useCallback(async () => {
+        if (!currentSessionId || !effectiveDirectory || changeExplanations.length === 0) {
+            return;
+        }
+        setIsSavingChangeNotes(true);
+        try {
+            const result = await persistChangeNotesToProject({
+                files,
+                projectRoot: effectiveDirectory,
+                sessionId: currentSessionId,
+                explanations: changeExplanations,
+            });
+            toast.success(`Saved ${result.explanationCount} change note${result.explanationCount === 1 ? '' : 's'}`, {
+                description: result.notesPath,
+            });
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to save change notes');
+        } finally {
+            setIsSavingChangeNotes(false);
+        }
+    }, [changeExplanations, currentSessionId, effectiveDirectory, files]);
 
     const workingFileCount = React.useMemo(() => {
         if (!status?.files) return 0;
@@ -1586,6 +1610,8 @@ export const DiffView: React.FC<DiffViewProps> = ({
                         className="hidden xl:flex xl:w-80 xl:min-w-80 xl:flex-col xl:self-stretch xl:overflow-hidden"
                         onSelectFile={handleSelectFileAndScroll}
                         onAction={onChangeExplanationAction}
+                        onSaveNotes={handleSaveChangeNotes}
+                        isSavingNotes={isSavingChangeNotes}
                     />
                 ) : null}
             </div>

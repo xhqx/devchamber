@@ -15,8 +15,10 @@ type ChangeCommentsPanelProps = {
   selectedFilePath?: string | null;
   compact?: boolean;
   className?: string;
+  isSavingNotes?: boolean;
   onSelectFile?: (filePath: string) => void;
   onAction?: (action: ChangeCommentPanelAction, explanation: ChangeExplanation) => void;
+  onSaveNotes?: () => void;
   editingExplanationId?: string | null;
   editingText?: string;
   onEditingTextChange?: (value: string) => void;
@@ -58,8 +60,10 @@ export const ChangeCommentsPanel: React.FC<ChangeCommentsPanelProps> = ({
   selectedFilePath = null,
   compact = false,
   className,
+  isSavingNotes = false,
   onSelectFile,
   onAction,
+  onSaveNotes,
   editingExplanationId = null,
   editingText = '',
   onEditingTextChange,
@@ -89,7 +93,14 @@ export const ChangeCommentsPanel: React.FC<ChangeCommentsPanelProps> = ({
           <Icon name="chat-3" className="size-4 text-muted-foreground" />
           <span className="truncate">Change explanations</span>
         </div>
-        <span className="typography-meta text-muted-foreground">{explanations.length}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          {onSaveNotes ? (
+            <Button size="xs" variant="ghost" onClick={onSaveNotes} disabled={isSavingNotes}>
+              {isSavingNotes ? 'Saving…' : 'Save notes'}
+            </Button>
+          ) : null}
+          <span className="typography-meta text-muted-foreground">{explanations.length}</span>
+        </div>
       </div>
       <div className={cn('space-y-3 p-3', compact ? 'max-h-64 overflow-auto' : 'overflow-auto')}>
         {groups.map((group) => {

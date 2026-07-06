@@ -17,7 +17,7 @@ Safe defaults:
 - `packages/ui/src/lib/modelFallback.ts` — model fallback data model and validation.
 - `packages/ui/src/lib/runWithModelFallback.ts` — retry wrapper for idempotent generation tasks.
 - `packages/ui/src/lib/autoApprovePolicy.ts` — safe auto-approval policy model and evaluator.
-- `packages/ui/src/lib/changeExplanations/*` — pure schema, store, code-change detection, docs-commit status, and structured explanation generation helpers for IDE explanations and docs-required decisions.
+- `packages/ui/src/lib/changeExplanations/*` — pure schema, store, code-change detection, docs-commit status, project-local change-note persistence, and structured explanation generation helpers for IDE explanations and docs-required decisions.
 - `packages/ui/src/components/changeExplanations/*` — UI surfaces for generated change notes, including grouped file/diff comments, docs status chips, and follow-up actions used by diff review panels.
 - `packages/ui/src/lib/repoIndex/*` — pure repository index schema, ignore rules, and indexing helpers for future runtime bridges, autocomplete sources, docs coverage, task links, and context selection.
 
