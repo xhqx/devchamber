@@ -1,3 +1,5 @@
+import { codeChangesRequireDocsDecision, detectCodeChanges, docsChangedForCodeChanges } from './changeExplanations/detectCodeChanges';
+
 export type CommitGenerationStatusEntry = {
   path: string;
   index?: string;
@@ -13,6 +15,7 @@ export type CommitGenerationDiffEntry = {
 export type CommitGenerationPromptContext = {
   selectedFiles: string;
   diffContext: string;
+  docsContext: string;
   truncated: boolean;
 };
 
@@ -43,6 +46,41 @@ const statusLabel = (entry?: CommitGenerationStatusEntry): string => {
   return `index=${index} working=${working}`;
 };
 
+const statusEntriesToDiffs = (entries: CommitGenerationStatusEntry[]) => (
+  entries.map((entry) => ({
+    file: entry.path,
+    status: entry.index?.trim() || entry.working_dir?.trim() || 'M',
+  }))
+);
+
+export const buildCommitGenerationDocsContext = (statusFiles: CommitGenerationStatusEntry[]): string => {
+  const changes = detectCodeChanges({ diffs: statusEntriesToDiffs(statusFiles) });
+  const codeChanges = changes.filter((change) => change.changeKind !== 'docs');
+  const docsChanges = changes.filter((change) => change.changeKind === 'docs');
+
+  if (!codeChangesRequireDocsDecision(changes) && !docsChangedForCodeChanges(changes)) {
+    return 'No code or documentation changes detected in selected status metadata.';
+  }
+
+  const lines = [
+    codeChanges.length > 0
+      ? 'Docs decision required: explain whether these code changes need documentation updates.'
+      : 'Documentation-only change detected: describe the docs update accurately.',
+  ];
+
+  if (codeChanges.length > 0) {
+    lines.push('Code changes:', ...codeChanges.map((change) => `- ${change.filePath} (${change.changeKind})`));
+  }
+
+  if (docsChanges.length > 0) {
+    lines.push('Documentation changes:', ...docsChanges.map((change) => `- ${change.filePath}`));
+  } else if (codeChanges.length > 0) {
+    lines.push('Documentation changes: none detected in selected files.');
+  }
+
+  return lines.join('\n');
+};
+
 const clampWithNotice = (value: string, maxChars: number): { value: string; truncated: boolean } => {
   if (value.length <= maxChars) {
     return { value, truncated: false };
@@ -69,6 +107,10 @@ export const buildCommitGenerationPromptContext = ({
     .map((file) => `- ${file} (${statusLabel(statusByPath.get(file))})`)
     .join('\n');
 
+  const docsContext = buildCommitGenerationDocsContext(
+    statusFiles.filter((entry) => normalizedFiles.includes(entry.path)),
+  );
+
   const rawDiffContext = normalizedFiles
     .map((file) => {
       const diffEntry = diffByPath.get(file);
@@ -89,6 +131,7 @@ export const buildCommitGenerationPromptContext = ({
   return {
     selectedFiles,
     diffContext,
+    docsContext,
     truncated,
   };
 };

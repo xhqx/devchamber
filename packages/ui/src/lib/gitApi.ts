@@ -267,6 +267,7 @@ export async function generateCommitMessage(
   const hiddenPrompt = await renderMagicPrompt('git.commit.generate.instructions', {
     selected_files: promptContext.selectedFiles,
     diff_context: promptContext.diffContext,
+    docs_context: promptContext.docsContext,
   });
 
   try {

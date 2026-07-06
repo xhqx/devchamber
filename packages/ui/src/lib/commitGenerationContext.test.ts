@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildCommitGenerationPromptContext } from './commitGenerationContext';
+import { buildCommitGenerationDocsContext, buildCommitGenerationPromptContext } from './commitGenerationContext';
 
 describe('commit generation prompt context', () => {
   test('adds status metadata and bounded diff excerpts', () => {
@@ -22,6 +22,8 @@ describe('commit generation prompt context', () => {
     ].join('\n'));
     expect(context.diffContext).toContain('### src/a.ts (index=M working=?)');
     expect(context.diffContext).toContain('```diff\ndiff --git a/src/a.ts b/src/a.ts\n+hello\n```');
+    expect(context.docsContext).toContain('Docs decision required');
+    expect(context.docsContext).toContain('- src/a.ts (modify)');
     expect(context.truncated).toBe(false);
   });
 
@@ -38,5 +40,25 @@ describe('commit generation prompt context', () => {
     expect(context.diffContext).toContain('### huge.ts');
     expect(context.diffContext).toContain('[diff context truncated to stay within prompt budget]');
     expect(context.truncated).toBe(true);
+  });
+
+  test('builds docs decision context from selected status files', () => {
+    expect(buildCommitGenerationDocsContext([
+      { path: 'src/feature.ts', index: 'M', working_dir: ' ' },
+      { path: 'docs/feature.md', index: 'M', working_dir: ' ' },
+      { path: 'assets/logo.png', index: 'M', working_dir: ' ' },
+    ])).toBe([
+      'Docs decision required: explain whether these code changes need documentation updates.',
+      'Code changes:',
+      '- src/feature.ts (modify)',
+      'Documentation changes:',
+      '- docs/feature.md',
+    ].join('\n'));
+
+    expect(buildCommitGenerationDocsContext([{ path: 'README.md', index: 'M', working_dir: ' ' }])).toBe([
+      'Documentation-only change detected: describe the docs update accurately.',
+      'Documentation changes:',
+      '- README.md',
+    ].join('\n'));
   });
 });

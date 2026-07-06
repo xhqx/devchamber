@@ -80,6 +80,7 @@ const MAGIC_PROMPT_DEFINITIONS: readonly MagicPromptDefinition[] = [
     placeholders: [
       { key: 'selected_files', description: 'Bullet list of currently selected file paths.' },
       { key: 'diff_context', description: 'Bounded staged diff excerpts and status metadata for selected files.' },
+      { key: 'docs_context', description: 'Docs-required decision context derived from selected code and documentation changes.' },
     ],
     template: `Return exactly one JSON object and nothing else. Do not include prose, markdown, explanations, or code fences.
 
@@ -92,6 +93,7 @@ Rules:
 - no scope in subject
 - keep subject concise and user-facing
 - prefer the bounded staged diff context over guessing from file names alone
+- use the docs decision context to reflect whether code changes likely need documentation updates
 - mention docs/config/test-only changes accurately when the diff context shows them
 - highlights: 0-3 concise user-facing points
 - use double quotes for all JSON strings
@@ -99,6 +101,9 @@ Rules:
 
 Selected files:
 {{selected_files}}
+
+Docs decision context:
+{{docs_context}}
 
 Bounded staged diff context:
 {{diff_context}}`,
