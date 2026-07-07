@@ -777,6 +777,10 @@ export const ProjectActionsButton = ({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 max-h-[70vh] overflow-y-auto">
+            <DropdownMenuItem className="flex items-center gap-2" onClick={() => setActiveMainTab('kanban')}>
+              <Icon name="file-list-2" className="h-4 w-4" />
+              <span className="typography-ui-label text-foreground">Project board</span>
+            </DropdownMenuItem>
             <DropdownMenuItem className="flex items-center gap-2" onClick={openProjectActionsSettings}>
               <Icon name="add" className="h-4 w-4" />
               <span className="typography-ui-label text-foreground">{t('projectActions.actions.addNewAction')}</span>
@@ -883,6 +887,10 @@ export const ProjectActionsButton = ({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-52 max-h-[70vh] overflow-y-auto">
+          <DropdownMenuItem className="flex items-center gap-2" onClick={() => setActiveMainTab('kanban')}>
+            <Icon name="file-list-2" className="h-4 w-4" />
+            <span className="typography-ui-label text-foreground">Project board</span>
+          </DropdownMenuItem>
           <DropdownMenuItem className="flex items-center gap-2" onClick={openProjectActionsSettings}>
             <Icon name="add" className="h-4 w-4" />
             <span className="typography-ui-label text-foreground">{t('projectActions.actions.addNewAction')}</span>

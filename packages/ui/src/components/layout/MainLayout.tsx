@@ -34,6 +34,7 @@ import { PlanView } from '@/components/views/PlanView';
 // Heavy views loaded on-demand to reduce initial bundle parse time.
 const TerminalView = lazyWithChunkRecovery(() => import('@/components/views/TerminalView').then(m => ({ default: m.TerminalView })));
 const DiagramView = lazyWithChunkRecovery(() => import('@/components/views/DiagramView').then(m => ({ default: m.DiagramView })));
+const KanbanProjectView = lazyWithChunkRecovery(() => import('@/components/views/KanbanProjectView').then(m => ({ default: m.KanbanProjectView })));
 const SettingsView = lazyWithChunkRecovery(() => import('@/components/views/SettingsView').then(m => ({ default: m.SettingsView })));
 const SettingsWindow = lazyWithChunkRecovery(() => import('@/components/views/SettingsWindow').then(m => ({ default: m.SettingsWindow })));
 const MultiRunWindow = lazyWithChunkRecovery(() => import('@/components/views/MultiRunWindow').then(m => ({ default: m.MultiRunWindow })));
@@ -372,6 +373,8 @@ export const MainLayout: React.FC = () => {
                 return <React.Suspense fallback={null}><ProjectContextPanel /></React.Suspense>;
             case 'diagram':
                 return <React.Suspense fallback={null}><DiagramView /></React.Suspense>;
+            case 'kanban':
+                return <React.Suspense fallback={null}><KanbanProjectView /></React.Suspense>;
             default:
                 return null;
         }
