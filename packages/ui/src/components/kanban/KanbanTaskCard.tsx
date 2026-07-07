@@ -16,10 +16,11 @@ type KanbanTaskCardProps = {
   task: KanbanTask;
   onEditTask?: (task: KanbanTask) => void;
   onAttachChangedFiles?: (task: KanbanTask) => void;
+  onCreateBranch?: (task: KanbanTask) => void;
   onMoveTask?: (taskId: string, status: KanbanTaskStatus) => void;
 };
 
-export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onEditTask, onAttachChangedFiles, onMoveTask }) => {
+export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onEditTask, onAttachChangedFiles, onCreateBranch, onMoveTask }) => {
   const previousStatus = getAdjacentKanbanStatus(board, task.status, 'previous');
   const nextStatus = getAdjacentKanbanStatus(board, task.status, 'next');
 
@@ -52,7 +53,7 @@ export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onE
         {task.filePaths.length > 2 ? <span className="rounded bg-muted px-1.5 py-0.5 typography-micro text-muted-foreground">+{task.filePaths.length - 2} files</span> : null}
       </div>
 
-      {onMoveTask || onEditTask || onAttachChangedFiles ? (
+      {onMoveTask || onEditTask || onAttachChangedFiles || onCreateBranch ? (
         <div className="mt-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             {onEditTask ? (
@@ -63,6 +64,11 @@ export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onE
             {onAttachChangedFiles ? (
               <Button size="xs" variant="ghost" onClick={() => onAttachChangedFiles(task)}>
                 Attach changes
+              </Button>
+            ) : null}
+            {onCreateBranch ? (
+              <Button size="xs" variant="ghost" disabled={Boolean(task.branch)} onClick={() => onCreateBranch(task)}>
+                {task.branch ? 'Branched' : 'Create branch'}
               </Button>
             ) : null}
           </div>

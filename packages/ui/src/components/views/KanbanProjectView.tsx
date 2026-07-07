@@ -2,6 +2,7 @@ import React from 'react';
 
 import { KanbanView } from './KanbanView';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
+import { buildKanbanTaskBranchName } from '@/lib/kanban/branch';
 import { collectKanbanAttachableChangedFiles } from '@/lib/kanban/changedFiles';
 import { createEmptyKanbanBoard, type KanbanBoard, type KanbanTask, type KanbanTaskPatch, type KanbanTaskStatus } from '@/lib/kanban/schema';
 import {
@@ -134,6 +135,35 @@ export const KanbanProjectView: React.FC = () => {
     }
   }, [board, files, git, projectRoot]);
 
+  const handleCreateBranch = React.useCallback(async (task: KanbanTask) => {
+    if (!projectRoot) {
+      setError('Select a project before creating task branches.');
+      return;
+    }
+
+    const suggestedBranch = buildKanbanTaskBranchName(task);
+    const branch = window.prompt('Branch name', task.branch || suggestedBranch)?.trim();
+    if (!branch) return;
+
+    const previousBoard = board;
+    const updatedAt = new Date().toISOString();
+    setBoard({
+      ...board,
+      tasks: board.tasks.map((candidate) => (candidate.id === task.id ? { ...candidate, branch, updatedAt } : candidate)),
+      updatedAt,
+    });
+    setError(null);
+
+    try {
+      await git.createBranch(projectRoot, branch);
+      const persistedBoard = await updateProjectKanbanTask({ files, projectRoot, taskId: task.id, patch: { branch }, now: updatedAt });
+      setBoard(persistedBoard);
+    } catch (branchError) {
+      setBoard(previousBoard);
+      setError(branchError instanceof Error ? branchError.message : 'Failed to create task branch.');
+    }
+  }, [board, files, git, projectRoot]);
+
   const handleMoveTask = React.useCallback(async (taskId: string, status: KanbanTaskStatus) => {
     if (!projectRoot) {
       setError('Select a project before moving board tasks.');
@@ -177,6 +207,7 @@ export const KanbanProjectView: React.FC = () => {
       onCreateTask={handleCreateTask}
       onEditTask={handleEditTask}
       onAttachChangedFiles={handleAttachChangedFiles}
+      onCreateBranch={handleCreateBranch}
       onMoveTask={handleMoveTask}
       onRefresh={refresh}
     />

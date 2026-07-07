@@ -10,10 +10,11 @@ type KanbanColumnProps = {
   column: KanbanColumnViewModel;
   onEditTask?: (task: KanbanTask) => void;
   onAttachChangedFiles?: (task: KanbanTask) => void;
+  onCreateBranch?: (task: KanbanTask) => void;
   onMoveTask?: (taskId: string, status: KanbanTaskStatus) => void;
 };
 
-export const KanbanColumn: React.FC<KanbanColumnProps> = ({ board, column, onEditTask, onAttachChangedFiles, onMoveTask }) => (
+export const KanbanColumn: React.FC<KanbanColumnProps> = ({ board, column, onEditTask, onAttachChangedFiles, onCreateBranch, onMoveTask }) => (
   <section className="flex min-h-0 min-w-[17rem] flex-1 flex-col rounded-xl border border-border/60 bg-[var(--surface-elevated)]/60">
     <header className="border-b border-border/50 px-3 py-2">
       <div className="flex items-start justify-between gap-2">
@@ -41,6 +42,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ board, column, onEdi
             task={task}
             onEditTask={onEditTask}
             onAttachChangedFiles={onAttachChangedFiles}
+            onCreateBranch={onCreateBranch}
             onMoveTask={onMoveTask}
           />
         ))
