@@ -128,7 +128,7 @@ describe('project kanban board controller', () => {
       files,
       projectRoot: '/repo',
       taskId: task.id,
-      patch: { title: 'Edited title', description: 'Ready for an agent', priority: 'high' },
+      patch: { title: 'Edited title', description: 'Ready for an agent', priority: 'high', sessionIds: ['sess-b', 'sess-a', 'sess-a'] },
       now: '2026-07-06T15:00:00.000Z',
     });
 
@@ -137,12 +137,14 @@ describe('project kanban board controller', () => {
       title: updated.tasks[0]?.title,
       description: updated.tasks[0]?.description,
       priority: updated.tasks[0]?.priority,
+      sessionIds: updated.tasks[0]?.sessionIds,
       updatedAt: updated.tasks[0]?.updatedAt,
     }).toEqual({
       id: task.id,
       title: 'Edited title',
       description: 'Ready for an agent',
       priority: 'high',
+      sessionIds: ['sess-a', 'sess-b'],
       updatedAt: '2026-07-06T15:00:00.000Z',
     });
     expect(writes.get('/repo/.openchamber/tasks/board.json')).toContain('Edited title');

@@ -15,14 +15,17 @@ type KanbanTaskCardProps = {
   board: KanbanBoard;
   task: KanbanTask;
   onEditTask?: (task: KanbanTask) => void;
+  currentSessionId?: string | null;
+  onAttachCurrentSession?: (task: KanbanTask) => void;
   onAttachChangedFiles?: (task: KanbanTask) => void;
   onCreateBranch?: (task: KanbanTask) => void;
   onMoveTask?: (taskId: string, status: KanbanTaskStatus) => void;
 };
 
-export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onEditTask, onAttachChangedFiles, onCreateBranch, onMoveTask }) => {
+export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onEditTask, currentSessionId, onAttachCurrentSession, onAttachChangedFiles, onCreateBranch, onMoveTask }) => {
   const previousStatus = getAdjacentKanbanStatus(board, task.status, 'previous');
   const nextStatus = getAdjacentKanbanStatus(board, task.status, 'next');
+  const hasCurrentSession = Boolean(currentSessionId && task.sessionIds.includes(currentSessionId));
 
   return (
     <article className="rounded-lg border border-border/60 bg-background/80 p-3 shadow-sm">
@@ -47,18 +50,24 @@ export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onE
       <div className="mt-3 flex flex-wrap gap-1.5">
         {task.branch ? <span className="rounded bg-muted px-1.5 py-0.5 typography-micro text-muted-foreground">{task.branch}</span> : null}
         {task.assignee ? <span className="rounded bg-muted px-1.5 py-0.5 typography-micro text-muted-foreground">{task.assignee}</span> : null}
+        {task.sessionIds.length > 0 ? <span className="rounded bg-muted px-1.5 py-0.5 typography-micro text-muted-foreground">{task.sessionIds.length} session{task.sessionIds.length === 1 ? '' : 's'}</span> : null}
         {task.filePaths.slice(0, 2).map((path) => (
           <span key={path} className="max-w-full truncate rounded bg-muted px-1.5 py-0.5 typography-micro text-muted-foreground" title={path}>{path}</span>
         ))}
         {task.filePaths.length > 2 ? <span className="rounded bg-muted px-1.5 py-0.5 typography-micro text-muted-foreground">+{task.filePaths.length - 2} files</span> : null}
       </div>
 
-      {onMoveTask || onEditTask || onAttachChangedFiles || onCreateBranch ? (
+      {onMoveTask || onEditTask || onAttachCurrentSession || onAttachChangedFiles || onCreateBranch ? (
         <div className="mt-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             {onEditTask ? (
               <Button size="xs" variant="ghost" onClick={() => onEditTask(task)}>
                 Edit
+              </Button>
+            ) : null}
+            {onAttachCurrentSession ? (
+              <Button size="xs" variant="ghost" disabled={hasCurrentSession} onClick={() => onAttachCurrentSession(task)}>
+                {hasCurrentSession ? 'Session attached' : 'Attach session'}
               </Button>
             ) : null}
             {onAttachChangedFiles ? (

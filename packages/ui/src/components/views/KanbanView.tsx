@@ -13,6 +13,8 @@ type KanbanViewProps = {
   error?: string | null;
   onCreateTask?: () => void;
   onEditTask?: (task: KanbanTask) => void;
+  currentSessionId?: string | null;
+  onAttachCurrentSession?: (task: KanbanTask) => void;
   onAttachChangedFiles?: (task: KanbanTask) => void;
   onCreateBranch?: (task: KanbanTask) => void;
   onMoveTask?: (taskId: string, status: KanbanTaskStatus) => void;
@@ -26,6 +28,8 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
   error = null,
   onCreateTask,
   onEditTask,
+  currentSessionId,
+  onAttachCurrentSession,
   onAttachChangedFiles,
   onCreateBranch,
   onMoveTask,
@@ -67,6 +71,8 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                 board={board}
                 column={column}
                 onEditTask={onEditTask}
+                currentSessionId={currentSessionId}
+                onAttachCurrentSession={onAttachCurrentSession}
                 onAttachChangedFiles={onAttachChangedFiles}
                 onCreateBranch={onCreateBranch}
                 onMoveTask={onMoveTask}

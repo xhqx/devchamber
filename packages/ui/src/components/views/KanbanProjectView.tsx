@@ -12,10 +12,12 @@ import {
   updateProjectKanbanTask,
 } from '@/lib/kanban/projectBoardController';
 import { useProjectsStore } from '@/stores/useProjectsStore';
+import { useSessionUIStore } from '@/sync/session-ui-store';
 
 export const KanbanProjectView: React.FC = () => {
   const { files, git } = useRuntimeAPIs();
   const activeProject = useProjectsStore((state) => state.getActiveProject());
+  const currentSessionId = useSessionUIStore((state) => state.currentSessionId);
   const [board, setBoard] = React.useState<KanbanBoard>(() => createEmptyKanbanBoard());
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -102,6 +104,39 @@ export const KanbanProjectView: React.FC = () => {
       setError(editError instanceof Error ? editError.message : 'Failed to edit task.');
     }
   }, [board, files, projectRoot]);
+
+  const handleAttachCurrentSession = React.useCallback(async (task: KanbanTask) => {
+    if (!projectRoot) {
+      setError('Select a project before attaching sessions.');
+      return;
+    }
+    if (!currentSessionId) {
+      setError('Open a session before attaching it to a board task.');
+      return;
+    }
+    if (task.sessionIds.includes(currentSessionId)) {
+      setError('Current session is already attached to this task.');
+      return;
+    }
+
+    const sessionIds = Array.from(new Set([...task.sessionIds, currentSessionId])).sort();
+    const previousBoard = board;
+    const updatedAt = new Date().toISOString();
+    setBoard({
+      ...board,
+      tasks: board.tasks.map((candidate) => (candidate.id === task.id ? { ...candidate, sessionIds, updatedAt } : candidate)),
+      updatedAt,
+    });
+    setError(null);
+
+    try {
+      const persistedBoard = await updateProjectKanbanTask({ files, projectRoot, taskId: task.id, patch: { sessionIds }, now: updatedAt });
+      setBoard(persistedBoard);
+    } catch (attachError) {
+      setBoard(previousBoard);
+      setError(attachError instanceof Error ? attachError.message : 'Failed to attach current session.');
+    }
+  }, [board, currentSessionId, files, projectRoot]);
 
   const handleAttachChangedFiles = React.useCallback(async (task: KanbanTask) => {
     if (!projectRoot) {
@@ -206,6 +241,8 @@ export const KanbanProjectView: React.FC = () => {
       error={error}
       onCreateTask={handleCreateTask}
       onEditTask={handleEditTask}
+      currentSessionId={currentSessionId}
+      onAttachCurrentSession={handleAttachCurrentSession}
       onAttachChangedFiles={handleAttachChangedFiles}
       onCreateBranch={handleCreateBranch}
       onMoveTask={handleMoveTask}
