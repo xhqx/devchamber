@@ -13,6 +13,7 @@ type KanbanViewProps = {
   error?: string | null;
   onCreateTask?: () => void;
   onEditTask?: (task: KanbanTask) => void;
+  onAttachChangedFiles?: (task: KanbanTask) => void;
   onMoveTask?: (taskId: string, status: KanbanTaskStatus) => void;
   onRefresh?: () => void;
 };
@@ -24,6 +25,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
   error = null,
   onCreateTask,
   onEditTask,
+  onAttachChangedFiles,
   onMoveTask,
   onRefresh,
 }) => {
@@ -58,7 +60,14 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
         ) : (
           <div className="flex min-h-full gap-3">
             {viewModel.columns.map((column) => (
-              <KanbanColumn key={column.id} board={board} column={column} onEditTask={onEditTask} onMoveTask={onMoveTask} />
+              <KanbanColumn
+                key={column.id}
+                board={board}
+                column={column}
+                onEditTask={onEditTask}
+                onAttachChangedFiles={onAttachChangedFiles}
+                onMoveTask={onMoveTask}
+              />
             ))}
           </div>
         )}

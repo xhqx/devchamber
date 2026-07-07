@@ -2,6 +2,7 @@ import React from 'react';
 
 import { KanbanView } from './KanbanView';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
+import { collectKanbanAttachableChangedFiles } from '@/lib/kanban/changedFiles';
 import { createEmptyKanbanBoard, type KanbanBoard, type KanbanTask, type KanbanTaskPatch, type KanbanTaskStatus } from '@/lib/kanban/schema';
 import {
   createProjectKanbanTask,
@@ -12,7 +13,7 @@ import {
 import { useProjectsStore } from '@/stores/useProjectsStore';
 
 export const KanbanProjectView: React.FC = () => {
-  const { files } = useRuntimeAPIs();
+  const { files, git } = useRuntimeAPIs();
   const activeProject = useProjectsStore((state) => state.getActiveProject());
   const [board, setBoard] = React.useState<KanbanBoard>(() => createEmptyKanbanBoard());
   const [isLoading, setIsLoading] = React.useState(false);
@@ -101,6 +102,38 @@ export const KanbanProjectView: React.FC = () => {
     }
   }, [board, files, projectRoot]);
 
+  const handleAttachChangedFiles = React.useCallback(async (task: KanbanTask) => {
+    if (!projectRoot) {
+      setError('Select a project before attaching changed files.');
+      return;
+    }
+
+    const previousBoard = board;
+    try {
+      setError(null);
+      const status = await git.getGitStatus(projectRoot, { mode: 'light' });
+      const changedFiles = collectKanbanAttachableChangedFiles(status);
+      if (changedFiles.length === 0) {
+        setError('No changed files to attach.');
+        return;
+      }
+
+      const filePaths = Array.from(new Set([...task.filePaths, ...changedFiles])).sort();
+      const updatedAt = new Date().toISOString();
+      setBoard({
+        ...board,
+        tasks: board.tasks.map((candidate) => (candidate.id === task.id ? { ...candidate, filePaths, updatedAt } : candidate)),
+        updatedAt,
+      });
+
+      const persistedBoard = await updateProjectKanbanTask({ files, projectRoot, taskId: task.id, patch: { filePaths }, now: updatedAt });
+      setBoard(persistedBoard);
+    } catch (attachError) {
+      setBoard(previousBoard);
+      setError(attachError instanceof Error ? attachError.message : 'Failed to attach changed files.');
+    }
+  }, [board, files, git, projectRoot]);
+
   const handleMoveTask = React.useCallback(async (taskId: string, status: KanbanTaskStatus) => {
     if (!projectRoot) {
       setError('Select a project before moving board tasks.');
@@ -143,6 +176,7 @@ export const KanbanProjectView: React.FC = () => {
       error={error}
       onCreateTask={handleCreateTask}
       onEditTask={handleEditTask}
+      onAttachChangedFiles={handleAttachChangedFiles}
       onMoveTask={handleMoveTask}
       onRefresh={refresh}
     />
