@@ -14,10 +14,11 @@ const PRIORITY_CLASSES: Record<'low' | 'medium' | 'high', string> = {
 type KanbanTaskCardProps = {
   board: KanbanBoard;
   task: KanbanTask;
+  onEditTask?: (task: KanbanTask) => void;
   onMoveTask?: (taskId: string, status: KanbanTaskStatus) => void;
 };
 
-export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onMoveTask }) => {
+export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onEditTask, onMoveTask }) => {
   const previousStatus = getAdjacentKanbanStatus(board, task.status, 'previous');
   const nextStatus = getAdjacentKanbanStatus(board, task.status, 'next');
 
@@ -50,14 +51,23 @@ export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onM
         {task.filePaths.length > 2 ? <span className="rounded bg-muted px-1.5 py-0.5 typography-micro text-muted-foreground">+{task.filePaths.length - 2} files</span> : null}
       </div>
 
-      {onMoveTask ? (
+      {onMoveTask || onEditTask ? (
         <div className="mt-3 flex items-center justify-between gap-2">
-          <Button size="xs" variant="ghost" disabled={!previousStatus} onClick={() => previousStatus && onMoveTask(task.id, previousStatus)}>
-            ← Move
-          </Button>
-          <Button size="xs" variant="ghost" disabled={!nextStatus} onClick={() => nextStatus && onMoveTask(task.id, nextStatus)}>
-            Move →
-          </Button>
+          {onEditTask ? (
+            <Button size="xs" variant="ghost" onClick={() => onEditTask(task)}>
+              Edit
+            </Button>
+          ) : <span />}
+          {onMoveTask ? (
+            <div className="flex items-center gap-1.5">
+              <Button size="xs" variant="ghost" disabled={!previousStatus} onClick={() => previousStatus && onMoveTask(task.id, previousStatus)}>
+                ← Move
+              </Button>
+              <Button size="xs" variant="ghost" disabled={!nextStatus} onClick={() => nextStatus && onMoveTask(task.id, nextStatus)}>
+                Move →
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </article>

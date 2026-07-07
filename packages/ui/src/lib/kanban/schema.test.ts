@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { createEmptyKanbanBoard, createKanbanTask } from './schema';
-import { moveKanbanTask, parseKanbanBoard, selectKanbanTasksByStatus, selectKanbanTasksForFile, selectKanbanTasksForSession, upsertKanbanTasks } from './store';
+import { moveKanbanTask, parseKanbanBoard, selectKanbanTasksByStatus, selectKanbanTasksForFile, selectKanbanTasksForSession, updateKanbanTask, upsertKanbanTasks } from './store';
 
 describe('kanban schema/store', () => {
   test('normalizes task drafts into stable task records', () => {
@@ -127,5 +127,35 @@ describe('kanban schema/store', () => {
       }],
       updatedAt: 'saved',
     });
+  });
+
+  test('updates task details without accepting blank titles', () => {
+    const task = createKanbanTask({
+      title: 'Original title',
+      description: 'Original details',
+      createdAt: '2026-07-06T16:00:00.000Z',
+    });
+    const board = upsertKanbanTasks(createEmptyKanbanBoard('initial'), [task], 'with-task');
+
+    const updated = updateKanbanTask(board, task.id, {
+      title: '  Edited title  ',
+      description: '  Edited details  ',
+      filePaths: ['./src\\Board.tsx', 'src/Board.tsx'],
+    }, 'edited-at');
+
+    expect({
+      title: updated.tasks[0]?.title,
+      description: updated.tasks[0]?.description,
+      filePaths: updated.tasks[0]?.filePaths,
+      updatedAt: updated.tasks[0]?.updatedAt,
+    }).toEqual({
+      title: 'Edited title',
+      description: 'Edited details',
+      filePaths: ['./src\\Board.tsx', 'src/Board.tsx'],
+      updatedAt: 'edited-at',
+    });
+
+    const rejected = updateKanbanTask(updated, task.id, { title: '   ' }, 'rejected-at');
+    expect(rejected.tasks[0]?.title).toBe('Edited title');
   });
 });

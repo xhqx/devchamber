@@ -42,6 +42,8 @@ export type KanbanTaskDraft = {
   updatedAt?: string;
 };
 
+export type KanbanTaskPatch = Partial<Omit<KanbanTaskDraft, 'createdAt' | 'updatedAt'>>;
+
 export type KanbanBoard = {
   version: 1;
   columns: KanbanColumn[];

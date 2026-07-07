@@ -3,7 +3,7 @@ import React from 'react';
 import { KanbanColumn } from '@/components/kanban/KanbanColumn';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { KanbanBoard, KanbanTaskStatus } from '@/lib/kanban/schema';
+import type { KanbanBoard, KanbanTask, KanbanTaskStatus } from '@/lib/kanban/schema';
 import { buildKanbanBoardViewModel } from '@/lib/kanban/viewModel';
 
 type KanbanViewProps = {
@@ -12,6 +12,7 @@ type KanbanViewProps = {
   isLoading?: boolean;
   error?: string | null;
   onCreateTask?: () => void;
+  onEditTask?: (task: KanbanTask) => void;
   onMoveTask?: (taskId: string, status: KanbanTaskStatus) => void;
   onRefresh?: () => void;
 };
@@ -22,6 +23,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
   isLoading = false,
   error = null,
   onCreateTask,
+  onEditTask,
   onMoveTask,
   onRefresh,
 }) => {
@@ -56,7 +58,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
         ) : (
           <div className="flex min-h-full gap-3">
             {viewModel.columns.map((column) => (
-              <KanbanColumn key={column.id} board={board} column={column} onMoveTask={onMoveTask} />
+              <KanbanColumn key={column.id} board={board} column={column} onEditTask={onEditTask} onMoveTask={onMoveTask} />
             ))}
           </div>
         )}

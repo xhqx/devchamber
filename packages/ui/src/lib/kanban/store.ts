@@ -1,4 +1,4 @@
-import type { KanbanBoard, KanbanColumn, KanbanTask, KanbanTaskStatus } from './schema';
+import type { KanbanBoard, KanbanColumn, KanbanTask, KanbanTaskPatch, KanbanTaskStatus } from './schema';
 import { DEFAULT_KANBAN_COLUMNS, createEmptyKanbanBoard, isKanbanTaskPriority, isKanbanTaskStatus } from './schema';
 
 export type KanbanBoardStore = KanbanBoard;
@@ -100,6 +100,34 @@ export const moveKanbanTask = (
       }
       : task
   ))),
+  updatedAt,
+});
+
+export const updateKanbanTask = (
+  board: KanbanBoardStore,
+  id: string,
+  patch: KanbanTaskPatch,
+  updatedAt = new Date().toISOString(),
+): KanbanBoardStore => ({
+  ...board,
+  tasks: sortTasks(board.tasks.map((task) => {
+    if (task.id !== id) return task;
+    const title = patch.title?.trim();
+    if (patch.title !== undefined && !title) return task;
+    return {
+      ...task,
+      ...(title ? { title } : null),
+      ...(patch.description !== undefined ? { description: patch.description.trim() || undefined } : null),
+      ...(patch.status !== undefined ? { status: patch.status } : null),
+      ...(patch.priority !== undefined ? { priority: patch.priority } : null),
+      ...(patch.sessionIds !== undefined ? { sessionIds: normalizeStringArray(patch.sessionIds) } : null),
+      ...(patch.filePaths !== undefined ? { filePaths: normalizeStringArray(patch.filePaths) } : null),
+      ...(patch.branch !== undefined ? { branch: patch.branch.trim() || undefined } : null),
+      ...(patch.assignee !== undefined ? { assignee: patch.assignee.trim() || undefined } : null),
+      ...(patch.blockedReason !== undefined ? { blockedReason: patch.blockedReason.trim() || undefined } : null),
+      updatedAt,
+    };
+  })),
   updatedAt,
 });
 
