@@ -107,14 +107,20 @@ export const KanbanProjectView: React.FC = () => {
       return;
     }
 
+    const task = board.tasks.find((candidate) => candidate.id === taskId);
+    const blockedReason = status === 'blocked'
+      ? window.prompt('Blocked reason', task?.blockedReason ?? '')?.trim()
+      : undefined;
+    if (status === 'blocked' && !blockedReason) return;
+
     const previousBoard = board;
     const updatedAt = new Date().toISOString();
     const optimisticBoard: KanbanBoard = {
       ...board,
-      tasks: board.tasks.map((task) => (
-        task.id === taskId
-          ? { ...task, status, updatedAt, blockedReason: status === 'blocked' ? task.blockedReason : undefined }
-          : task
+      tasks: board.tasks.map((candidate) => (
+        candidate.id === taskId
+          ? { ...candidate, status, updatedAt, blockedReason: status === 'blocked' ? blockedReason : undefined }
+          : candidate
       )),
       updatedAt,
     };
@@ -122,7 +128,7 @@ export const KanbanProjectView: React.FC = () => {
     setError(null);
 
     try {
-      const persistedBoard = await moveProjectKanbanTask({ files, projectRoot, taskId, status, now: updatedAt });
+      const persistedBoard = await moveProjectKanbanTask({ files, projectRoot, taskId, status, blockedReason, now: updatedAt });
       setBoard(persistedBoard);
     } catch (moveError) {
       setBoard(previousBoard);

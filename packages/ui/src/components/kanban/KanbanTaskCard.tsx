@@ -60,6 +60,11 @@ export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onE
           ) : <span />}
           {onMoveTask ? (
             <div className="flex items-center gap-1.5">
+              {task.status !== 'blocked' ? (
+                <Button size="xs" variant="ghost" onClick={() => onMoveTask(task.id, 'blocked')}>
+                  Block
+                </Button>
+              ) : null}
               <Button size="xs" variant="ghost" disabled={!previousStatus} onClick={() => previousStatus && onMoveTask(task.id, previousStatus)}>
                 ← Move
               </Button>

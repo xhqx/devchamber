@@ -62,6 +62,34 @@ describe('project kanban board controller', () => {
     expect(writes.get('/repo/.openchamber/tasks/board.json')).toContain('"status": "in_progress"');
   });
 
+  test('persists blocked reason when moving a task to blocked', async () => {
+    const task = createKanbanTask({
+      title: 'Wait for review',
+      status: 'in_progress',
+      createdAt: '2026-07-06T12:30:00.000Z',
+    });
+    const board = upsertKanbanTasks(createEmptyKanbanBoard('initial'), [task], 'with-task');
+    const { files, writes } = createMemoryFiles(JSON.stringify(board));
+
+    const blocked = await moveProjectKanbanTask({
+      files,
+      projectRoot: '/repo',
+      taskId: task.id,
+      status: 'blocked',
+      blockedReason: '  Waiting on dependency  ',
+      now: '2026-07-06T12:45:00.000Z',
+    });
+
+    expect({
+      status: blocked.tasks[0]?.status,
+      blockedReason: blocked.tasks[0]?.blockedReason,
+    }).toEqual({
+      status: 'blocked',
+      blockedReason: 'Waiting on dependency',
+    });
+    expect(writes.get('/repo/.openchamber/tasks/board.json')).toContain('Waiting on dependency');
+  });
+
   test('creates and persists a new task', async () => {
     const { files, writes } = createMemoryFiles(JSON.stringify(createEmptyKanbanBoard('initial')));
 
