@@ -118,4 +118,25 @@ describe('prompt autocomplete sources', () => {
       suggestion: { value: '@packages/ui/src/components/chat/ChatInput.tsx' },
     })).toBe('Please inspect @packages/ui/src/components/chat/ChatInput.tsx before commit');
   });
+
+  test('applies suggestions at the ChatInput caret without touching later prompt text', () => {
+    const value = 'First /deb then task:kan';
+    const commandTrigger = detectPromptAutocompleteTrigger(value, 'First /deb'.length);
+    if (!commandTrigger) throw new Error('expected command trigger');
+
+    expect(applyPromptAutocompleteSuggestion({
+      value,
+      trigger: commandTrigger,
+      suggestion: { value: '/debug' },
+    })).toBe('First /debug then task:kan');
+
+    const taskTrigger = detectPromptAutocompleteTrigger(value, value.length);
+    if (!taskTrigger) throw new Error('expected task trigger');
+
+    expect(applyPromptAutocompleteSuggestion({
+      value,
+      trigger: taskTrigger,
+      suggestion: { value: 'task:kanban-1' },
+    })).toBe('First /deb then task:kanban-1');
+  });
 });

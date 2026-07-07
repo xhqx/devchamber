@@ -30,6 +30,7 @@ import { FileMentionAutocomplete, type FileMentionHandle } from './FileMentionAu
 import { CommandAutocomplete, type CommandAutocompleteHandle, type CommandInfo } from './CommandAutocomplete';
 import { SkillAutocomplete, type SkillAutocompleteHandle } from './SkillAutocomplete';
 import { SnippetAutocomplete, type SnippetAutocompleteHandle } from './SnippetAutocomplete';
+import { AutocompleteMenu, type AutocompleteMenuHandle } from '@/components/autocomplete/AutocompleteMenu';
 import { cn, formatDirectoryName, isMacOS } from '@/lib/utils';
 import { ModelControls } from './ModelControls';
 import { parseAgentMentions } from '@/lib/messages/agentMentions';
@@ -98,6 +99,18 @@ import {
     findAttachmentCitationRanges,
 } from './attachmentCitations';
 import { getFileMentionAutocompleteQuery, type FileMentionAutocompleteInputSource } from './fileMentionAutocompleteState';
+import {
+    applyPromptAutocompleteSuggestion,
+    buildPromptAutocompleteSuggestions,
+    detectPromptAutocompleteTrigger,
+    type PromptAutocompleteCommand,
+    type PromptAutocompleteSuggestion,
+    type PromptAutocompleteTask,
+    type PromptAutocompleteTrigger,
+} from '@/lib/autocomplete/sources';
+import { buildRepositoryIndexFromFilesApi } from '@/lib/repoIndex/fromFilesApi';
+import type { RepoIndex } from '@/lib/repoIndex/schema';
+import { loadProjectKanbanBoard } from '@/lib/kanban/projectBoardController';
 import type { Part } from '@opencode-ai/sdk/v2/client';
 
 const MAX_VISIBLE_TEXTAREA_LINES = 8;
@@ -1006,6 +1019,10 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
     const [skillQuery, setSkillQuery] = React.useState('');
     const [showSnippetAutocomplete, setShowSnippetAutocomplete] = React.useState(false);
     const [snippetQuery, setSnippetQuery] = React.useState('');
+    const [promptAutocompleteTrigger, setPromptAutocompleteTrigger] = React.useState<PromptAutocompleteTrigger | null>(null);
+    const [repoIndex, setRepoIndex] = React.useState<RepoIndex | null>(null);
+    const [repoIndexDirectory, setRepoIndexDirectory] = React.useState<string | null>(null);
+    const [promptAutocompleteTasks, setPromptAutocompleteTasks] = React.useState<PromptAutocompleteTask[]>([]);
     const [textareaSize, setTextareaSize] = React.useState<{ height: number; maxHeight: number } | null>(null);
     const [mobileControlsPanel, setMobileControlsPanel] = React.useState<MobileControlsPanel>(null);
     // Mobile pill composer: when the keyboard is closed the composer collapses
@@ -1051,6 +1068,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
     const commandRef = React.useRef<CommandAutocompleteHandle>(null);
     const skillRef = React.useRef<SkillAutocompleteHandle>(null);
     const snippetRef = React.useRef<SnippetAutocompleteHandle>(null);
+    const promptAutocompleteRef = React.useRef<AutocompleteMenuHandle>(null);
     // Ref to track current message value without triggering re-renders in effects
     const messageRef = React.useRef(message);
     const draftPersistTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1113,7 +1131,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
     const isExpandedInput = useUIStore((state) => state.isExpandedInput);
     const setExpandedInput = useUIStore((state) => state.setExpandedInput);
     const setTimelineDialogOpen = useUIStore((state) => state.setTimelineDialogOpen);
-    const { git: runtimeGit, vscode: vscodeApi } = useRuntimeAPIs();
+    const { git: runtimeGit, vscode: vscodeApi, files: runtimeFiles } = useRuntimeAPIs();
     const cycleAgentShortcutOverride = useUIStore((state) => state.shortcutOverrides.cycle_agent);
     const cycleAgentShortcut = React.useMemo(() => (
         getEffectiveShortcutCombo('cycle_agent', cycleAgentShortcutOverride ? { cycle_agent: cycleAgentShortcutOverride } : undefined)
@@ -1244,6 +1262,97 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         for (const skill of availableSkills) names.add(skill.name.toLowerCase());
         return names;
     }, [availableCommands, availableSkills, isMobile]);
+
+    const promptAutocompleteDirectory = currentSessionDirectoryForSync ?? currentDirectory ?? null;
+
+    const promptAutocompleteCommands = React.useMemo<PromptAutocompleteCommand[]>(() => {
+        const commands = new Map<string, PromptAutocompleteCommand>();
+        for (const name of knownSlashNames) {
+            commands.set(name, { name });
+        }
+        for (const command of availableCommands) {
+            commands.set(command.name.toLowerCase(), {
+                name: command.name,
+                description: command.description,
+            });
+        }
+        for (const skill of availableSkills) {
+            commands.set(skill.name.toLowerCase(), {
+                name: skill.name,
+                description: skill.description,
+            });
+        }
+        return Array.from(commands.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }, [availableCommands, availableSkills, knownSlashNames]);
+
+    React.useEffect(() => {
+        if (!promptAutocompleteDirectory || !runtimeFiles.scanRepoIndex) {
+            setRepoIndex(null);
+            setRepoIndexDirectory(null);
+            return;
+        }
+
+        let cancelled = false;
+        void buildRepositoryIndexFromFilesApi(runtimeFiles, {
+            directory: promptAutocompleteDirectory,
+            maxFiles: 1500,
+        }).then((index) => {
+            if (cancelled) return;
+            setRepoIndex(index);
+            setRepoIndexDirectory(promptAutocompleteDirectory);
+        }).catch((error) => {
+            if (cancelled) return;
+            console.warn('[chat-input] failed to build prompt autocomplete repo index', error);
+            setRepoIndex(null);
+            setRepoIndexDirectory(null);
+        });
+
+        return () => { cancelled = true; };
+    }, [promptAutocompleteDirectory, runtimeFiles]);
+
+    React.useEffect(() => {
+        if (!promptAutocompleteDirectory) {
+            setPromptAutocompleteTasks([]);
+            return;
+        }
+
+        let cancelled = false;
+        void loadProjectKanbanBoard({ files: runtimeFiles, projectRoot: promptAutocompleteDirectory })
+            .then((board) => {
+                if (cancelled) return;
+                setPromptAutocompleteTasks(board.tasks.map((task) => ({
+                    id: task.id,
+                    title: task.title,
+                    status: task.status,
+                })));
+            })
+            .catch((error) => {
+                if (cancelled) return;
+                console.warn('[chat-input] failed to load prompt autocomplete tasks', error);
+                setPromptAutocompleteTasks([]);
+            });
+
+        return () => { cancelled = true; };
+    }, [promptAutocompleteDirectory, runtimeFiles]);
+
+    const promptAutocompleteSuggestions = React.useMemo<PromptAutocompleteSuggestion[]>(() => buildPromptAutocompleteSuggestions({
+        trigger: promptAutocompleteTrigger,
+        repoIndex: repoIndexDirectory === promptAutocompleteDirectory ? repoIndex : null,
+        commands: promptAutocompleteCommands,
+        tasks: promptAutocompleteTasks,
+        maxItems: 12,
+    }), [
+        promptAutocompleteCommands,
+        promptAutocompleteDirectory,
+        promptAutocompleteTasks,
+        promptAutocompleteTrigger,
+        repoIndex,
+        repoIndexDirectory,
+    ]);
+
+    const showPromptAutocomplete = inputMode !== 'shell'
+        && promptAutocompleteTrigger !== null
+        && promptAutocompleteSuggestions.length > 0;
 
     // /command and /skill spans (primary color). Only tokens that match a known
     // command/skill name are highlighted — partial/unknown tokens stay plain.
@@ -2469,6 +2578,15 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
             }
         }
 
+        if (showPromptAutocomplete && promptAutocompleteRef.current) {
+            if (e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Escape' || e.key === 'Tab') {
+                e.preventDefault();
+                e.stopPropagation();
+                promptAutocompleteRef.current.handleKeyDown(e.key);
+                return;
+            }
+        }
+
         if (showCommandAutocomplete && commandRef.current) {
             if (e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Escape' || e.key === 'Tab') {
                 e.preventDefault();
@@ -2520,7 +2638,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                 ? 1
                 : 0;
 
-        if (cycleAgentDirection !== 0 && !showCommandAutocomplete && !showSkillAutocomplete && !showSnippetAutocomplete && !showFileMention) {
+        if (cycleAgentDirection !== 0 && !showPromptAutocomplete && !showCommandAutocomplete && !showSkillAutocomplete && !showSnippetAutocomplete && !showFileMention) {
             e.preventDefault();
             e.stopPropagation();
             handleCycleAgent(cycleAgentDirection);
@@ -2530,7 +2648,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         // Handle ArrowUp/ArrowDown for message history navigation
         // ArrowUp: only when cursor at start (position 0) or input is empty
         // ArrowDown: also works when cursor at end (to cycle forward through history)
-        const isAnyAutocompleteOpen = showCommandAutocomplete || showSkillAutocomplete || showSnippetAutocomplete || showFileMention;
+        const isAnyAutocompleteOpen = showPromptAutocomplete || showCommandAutocomplete || showSkillAutocomplete || showSnippetAutocomplete || showFileMention;
         const cursorAtStart = textareaRef.current?.selectionStart === 0 && textareaRef.current?.selectionEnd === 0;
         const cursorAtEnd = textareaRef.current?.selectionStart === message.length && textareaRef.current?.selectionEnd === message.length;
         const canNavigateHistoryUp = !isAnyAutocompleteOpen && (message.length === 0 || cursorAtStart);
@@ -2703,7 +2821,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
             return;
         }
 
-        if (!showCommandAutocomplete && !showSkillAutocomplete && !showSnippetAutocomplete && !showFileMention) {
+        if (!showPromptAutocomplete && !showCommandAutocomplete && !showSkillAutocomplete && !showSnippetAutocomplete && !showFileMention) {
             setAutocompleteOverlayPosition(null);
             return;
         }
@@ -2728,7 +2846,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         const spaceBelow = containerRect.height - caretY - popupMargin;
         const place: 'above' | 'below' = spaceBelow >= estimatedPopupHeight || spaceBelow >= spaceAbove ? 'below' : 'above';
 
-        const desiredWidth = showFileMention ? 520 : showCommandAutocomplete || showSnippetAutocomplete ? 450 : 360;
+        const desiredWidth = showFileMention || showPromptAutocomplete ? 520 : showCommandAutocomplete || showSnippetAutocomplete ? 450 : 360;
         const clampedLeft = Math.max(
             popupMargin,
             Math.min(caretX - 24, containerRect.width - desiredWidth - popupMargin)
@@ -2748,6 +2866,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         message.length,
         showCommandAutocomplete,
         showFileMention,
+        showPromptAutocomplete,
         showSnippetAutocomplete,
         showSkillAutocomplete,
     ]);
@@ -2761,6 +2880,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         showSkillAutocomplete,
         showSnippetAutocomplete,
         showFileMention,
+        showPromptAutocomplete,
         isDesktopExpanded,
     ]);
 
@@ -2873,8 +2993,11 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
             setShowFileMention(false);
             setShowSkillAutocomplete(false);
             setShowSnippetAutocomplete(false);
+            setPromptAutocompleteTrigger(null);
             return;
         }
+
+        setPromptAutocompleteTrigger(detectPromptAutocompleteTrigger(value, cursorPosition));
 
         if (value.startsWith('/')) {
             const firstSpace = value.indexOf(' ');
@@ -3244,6 +3367,45 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
 
         textareaRef.current?.focus();
     };
+
+    const handlePromptAutocompleteSelect = React.useCallback((suggestion: PromptAutocompleteSuggestion) => {
+        const trigger = promptAutocompleteTrigger;
+        if (!trigger) return;
+
+        if (suggestion.kind === 'file' && suggestion.path) {
+            confirmedMentionsRef.current.add(suggestion.path);
+        }
+
+        const nextMessage = applyPromptAutocompleteSuggestion({
+            value: message,
+            trigger,
+            suggestion,
+        });
+        setMessage(nextMessage);
+        setPromptAutocompleteTrigger(null);
+        setShowCommandAutocomplete(false);
+        setShowFileMention(false);
+        setShowSkillAutocomplete(false);
+        setShowSnippetAutocomplete(false);
+
+        const nextCursor = trigger.start + suggestion.value.length + (
+            nextMessage[trigger.start + suggestion.value.length] === ' ' ? 1 : 0
+        );
+
+        requestAnimationFrame(() => {
+            if (textareaRef.current) {
+                textareaRef.current.selectionStart = nextCursor;
+                textareaRef.current.selectionEnd = nextCursor;
+                textareaRef.current.focus();
+            }
+            adjustTextareaHeight();
+            updateAutocompleteState(nextMessage, nextCursor);
+        });
+    }, [adjustTextareaHeight, message, promptAutocompleteTrigger, updateAutocompleteState]);
+
+    const closePromptAutocomplete = React.useCallback(() => {
+        setPromptAutocompleteTrigger(null);
+    }, []);
 
     const handleAgentSelect = (agentName: string) => {
         const textarea = textareaRef.current;
@@ -4863,7 +5025,33 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                         </div>
                     )}
 
-                    {showCommandAutocomplete && (
+                    {showPromptAutocomplete && (
+                        <AutocompleteMenu
+                            ref={promptAutocompleteRef}
+                            suggestions={promptAutocompleteSuggestions}
+                            onSelect={handlePromptAutocompleteSelect}
+                            onClose={closePromptAutocomplete}
+                            title={promptAutocompleteTrigger?.kind === 'file'
+                                ? 'Files'
+                                : promptAutocompleteTrigger?.kind === 'symbol'
+                                    ? 'Symbols'
+                                    : promptAutocompleteTrigger?.kind === 'task'
+                                        ? 'Tasks'
+                                        : 'Commands'}
+                            style={isDesktopExpanded && autocompleteOverlayPosition
+                                ? {
+                                    left: `${autocompleteOverlayPosition.left}px`,
+                                    top: `${autocompleteOverlayPosition.top}px`,
+                                    bottom: 'auto',
+                                    width: `min(520px, calc(100% - ${autocompleteOverlayPosition.left + 8}px))`,
+                                    maxHeight: `${autocompleteOverlayPosition.maxHeight}px`,
+                                    transform: autocompleteOverlayPosition.place === 'above' ? 'translateY(-100%)' : undefined,
+                                }
+                                : undefined}
+                        />
+                    )}
+
+                    {!showPromptAutocomplete && showCommandAutocomplete && (
                         <CommandAutocomplete
                             ref={commandRef}
                             searchQuery={commandQuery}
@@ -4882,7 +5070,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                         />
                     )}
                     { }
-                    {showSkillAutocomplete && (
+                    {!showPromptAutocomplete && showSkillAutocomplete && (
                         <SkillAutocomplete
                             ref={skillRef}
                             searchQuery={skillQuery}
@@ -4901,7 +5089,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                         />
                     )}
 
-                    {showSnippetAutocomplete && (
+                    {!showPromptAutocomplete && showSnippetAutocomplete && (
                         <SnippetAutocomplete
                             ref={snippetRef}
                             searchQuery={snippetQuery}
@@ -4920,7 +5108,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                         />
                     )}
 
-                    {showFileMention && (
+                    {!showPromptAutocomplete && showFileMention && (
 
                         <FileMentionAutocomplete
                             ref={mentionRef}
