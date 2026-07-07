@@ -1766,6 +1766,7 @@ export const Header: React.FC<HeaderProps> = ({
         { id: 'context', label: t('layout.mainTab.context'), icon: "file-list-2" },
         { id: 'diagram', label: t('layout.mainTab.diagram'), icon: 'file' },
         { id: 'kanban', label: 'Board', icon: 'file-list-2' },
+        { id: 'repo-map', label: 'Map', icon: 'file-list-2' },
       );
 
       return base;

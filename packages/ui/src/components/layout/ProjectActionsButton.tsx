@@ -781,6 +781,10 @@ export const ProjectActionsButton = ({
               <Icon name="file-list-2" className="h-4 w-4" />
               <span className="typography-ui-label text-foreground">Project board</span>
             </DropdownMenuItem>
+            <DropdownMenuItem className="flex items-center gap-2" onClick={() => setActiveMainTab('repo-map')}>
+              <Icon name="file-list-2" className="h-4 w-4" />
+              <span className="typography-ui-label text-foreground">Repo map</span>
+            </DropdownMenuItem>
             <DropdownMenuItem className="flex items-center gap-2" onClick={openProjectActionsSettings}>
               <Icon name="add" className="h-4 w-4" />
               <span className="typography-ui-label text-foreground">{t('projectActions.actions.addNewAction')}</span>
@@ -890,6 +894,10 @@ export const ProjectActionsButton = ({
           <DropdownMenuItem className="flex items-center gap-2" onClick={() => setActiveMainTab('kanban')}>
             <Icon name="file-list-2" className="h-4 w-4" />
             <span className="typography-ui-label text-foreground">Project board</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="flex items-center gap-2" onClick={() => setActiveMainTab('repo-map')}>
+            <Icon name="file-list-2" className="h-4 w-4" />
+            <span className="typography-ui-label text-foreground">Repo map</span>
           </DropdownMenuItem>
           <DropdownMenuItem className="flex items-center gap-2" onClick={openProjectActionsSettings}>
             <Icon name="add" className="h-4 w-4" />
