@@ -73,6 +73,11 @@ export type RepoMapTreeFilterResult = {
   matchedPaths: string[];
 };
 
+export type RepoMapSymbolFilterResult = {
+  symbols: RepoMapSymbolSummary[];
+  matchedCount: number;
+};
+
 const ROOT_NODE_PATH = '';
 
 const baseName = (path: string): string => path.split('/').filter(Boolean).at(-1) ?? path;
@@ -220,6 +225,26 @@ export const filterRepoMapTree = (root: RepoMapTreeNode, filter: string | RepoMa
     matchedFileCount,
     matchedDirectoryCount,
     matchedPaths,
+  };
+};
+
+export const filterRepoMapSymbols = (
+  symbols: RepoMapSymbolSummary[],
+  query: string,
+  options: { limit?: number } = {},
+): RepoMapSymbolFilterResult => {
+  const normalizedQuery = normalizeTreeFilterQuery(query);
+  const matchingSymbols = normalizedQuery
+    ? symbols.filter((symbol) => {
+      const searchable = [symbol.name, symbol.kind, symbol.path, String(symbol.line)]
+        .join(' ')
+        .toLowerCase();
+      return normalizedQuery.split(/\s+/).every((token) => searchable.includes(token));
+    })
+    : symbols;
+  return {
+    symbols: matchingSymbols.slice(0, options.limit ?? 20),
+    matchedCount: matchingSymbols.length,
   };
 };
 

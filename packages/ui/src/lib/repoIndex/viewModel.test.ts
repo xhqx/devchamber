@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { buildRepoIndex } from './indexer';
-import { buildRepoMapViewModel, filterRepoMapTree } from './viewModel';
+import { buildRepoMapViewModel, filterRepoMapSymbols, filterRepoMapTree } from './viewModel';
 import type { RepoIndexInputFile } from './schema';
 
 const file = (path: string, content = '', size = content.length, mtimeMs = 1000): RepoIndexInputFile => ({
@@ -105,5 +105,21 @@ describe('repo map view model', () => {
     expect(filtered.matchedPaths).toEqual(['packages/ui/src/Button.tsx']);
     expect(filtered.root.children.map((node) => node.path)).toEqual(['packages']);
     expect(filtered.root.children[0]?.children.map((node) => node.path)).toEqual(['packages/ui']);
+  });
+
+  test('filters repo symbols by name kind and path', () => {
+    const index = buildRepoIndex([
+      file('packages/ui/src/Button.tsx', 'export function Button() { return null; }', 90, 50),
+      file('packages/ui/src/Card.tsx', 'export const Card = () => null', 80, 40),
+      file('packages/api/src/server.ts', 'export class Server {}', 70, 35),
+    ], { generatedAt: '2026-07-07T00:00:00.000Z' });
+
+    const viewModel = buildRepoMapViewModel(index, { maxSymbols: 10 });
+    const filtered = filterRepoMapSymbols(viewModel.topSymbols, 'ui src', { limit: 1 });
+
+    expect(filtered.matchedCount).toBe(2);
+    expect(filtered.symbols).toEqual([
+      { name: 'Button', kind: 'component', path: 'packages/ui/src/Button.tsx', line: 1 },
+    ]);
   });
 });

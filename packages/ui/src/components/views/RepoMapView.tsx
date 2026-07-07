@@ -5,7 +5,7 @@ import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { buildRepositoryIndexFromFilesApi } from '@/lib/repoIndex/fromFilesApi';
 import type { RepoLanguage } from '@/lib/repoIndex/schema';
 import type { RepoMapTreeNode, RepoMapViewModel } from '@/lib/repoIndex/viewModel';
-import { buildRepoMapViewModel, filterRepoMapTree } from '@/lib/repoIndex/viewModel';
+import { buildRepoMapViewModel, filterRepoMapSymbols, filterRepoMapTree } from '@/lib/repoIndex/viewModel';
 import { cn } from '@/lib/utils';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 
@@ -160,10 +160,12 @@ type RepoMapContentProps = {
   treeQuery: string;
   selectedLanguage: RepoLanguage | 'all';
   selectedPackage: string;
+  symbolQuery: string;
   expandedPaths: Set<string>;
   onTreeQueryChange: (query: string) => void;
   onSelectedLanguageChange: (language: RepoLanguage | 'all') => void;
   onSelectedPackageChange: (packageName: string) => void;
+  onSymbolQueryChange: (query: string) => void;
   onToggleDirectory: (path: string) => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
@@ -176,10 +178,12 @@ const RepoMapContent: React.FC<RepoMapContentProps> = ({
   treeQuery,
   selectedLanguage,
   selectedPackage,
+  symbolQuery,
   expandedPaths,
   onTreeQueryChange,
   onSelectedLanguageChange,
   onSelectedPackageChange,
+  onSymbolQueryChange,
   onToggleDirectory,
   onExpandAll,
   onCollapseAll,
@@ -194,6 +198,8 @@ const RepoMapContent: React.FC<RepoMapContentProps> = ({
     packageNames: selectedPackage ? [selectedPackage] : [],
   }), [selectedLanguage, selectedPackage, treeQuery, viewModel.root]);
   const hasFilter = treeQuery.trim().length > 0 || selectedLanguage !== 'all' || selectedPackage.length > 0;
+  const filteredSymbols = React.useMemo(() => filterRepoMapSymbols(viewModel.topSymbols, symbolQuery, { limit: 30 }), [symbolQuery, viewModel.topSymbols]);
+  const hasSymbolQuery = symbolQuery.trim().length > 0;
   const visibleRoot = filteredTree.root;
   const visibleExpandedPaths = React.useMemo(
     () => hasFilter ? new Set(collectDirectoryPaths(visibleRoot)) : expandedPaths,
@@ -295,11 +301,25 @@ const RepoMapContent: React.FC<RepoMapContentProps> = ({
         </section>
 
         <section className="rounded-xl border border-border/60 bg-[var(--surface-elevated)]/60 p-3">
-          <h3 className="typography-ui-label font-semibold text-foreground">Top symbols</h3>
-          <div className="mt-3 space-y-1.5">
-            {viewModel.topSymbols.length === 0 ? (
-              <p className="typography-meta text-muted-foreground">No exported symbols indexed yet.</p>
-            ) : viewModel.topSymbols.map((symbol) => (
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="typography-ui-label font-semibold text-foreground">Symbols</h3>
+              <p className="typography-meta text-muted-foreground">
+                {hasSymbolQuery ? `${filteredSymbols.matchedCount} matches` : `${viewModel.topSymbols.length} indexed symbols`}
+              </p>
+            </div>
+            {hasSymbolQuery ? <Button size="xs" variant="ghost" onClick={() => onSymbolQueryChange('')}>Clear</Button> : null}
+          </div>
+          <input
+            value={symbolQuery}
+            onChange={(event) => onSymbolQueryChange(event.target.value)}
+            placeholder="Search symbols by name, kind, or path…"
+            className="mt-3 h-9 w-full rounded-md border border-border/60 bg-background px-3 typography-ui-body text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+          />
+          <div className="mt-3 max-h-72 space-y-1.5 overflow-auto">
+            {filteredSymbols.symbols.length === 0 ? (
+              <p className="typography-meta text-muted-foreground">No symbols match this search.</p>
+            ) : filteredSymbols.symbols.map((symbol) => (
               <button
                 key={`${symbol.path}:${symbol.line}:${symbol.name}`}
                 type="button"
@@ -344,6 +364,7 @@ export const RepoMapView: React.FC = () => {
   const [treeQuery, setTreeQuery] = React.useState('');
   const [selectedLanguage, setSelectedLanguage] = React.useState<RepoLanguage | 'all'>('all');
   const [selectedPackage, setSelectedPackage] = React.useState('');
+  const [symbolQuery, setSymbolQuery] = React.useState('');
   const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(() => new Set(['']));
 
   const refresh = React.useCallback(async () => {
@@ -357,7 +378,7 @@ export const RepoMapView: React.FC = () => {
     setError(null);
     try {
       const index = await buildRepositoryIndexFromFilesApi(files, { directory: projectRoot, maxFiles: 2000 });
-      setViewModel(buildRepoMapViewModel(index, { maxSymbols: 24, maxRecentFiles: 12 }));
+      setViewModel(buildRepoMapViewModel(index, { maxSymbols: 200, maxRecentFiles: 12 }));
     } catch (refreshError) {
       setViewModel(null);
       setError(refreshError instanceof Error ? refreshError.message : 'Failed to build repo map.');
@@ -374,6 +395,7 @@ export const RepoMapView: React.FC = () => {
     setTreeQuery('');
     setSelectedLanguage('all');
     setSelectedPackage('');
+    setSymbolQuery('');
     setExpandedPaths(new Set(['']));
   }, [projectRoot]);
 
@@ -434,10 +456,12 @@ export const RepoMapView: React.FC = () => {
           treeQuery={treeQuery}
           selectedLanguage={selectedLanguage}
           selectedPackage={selectedPackage}
+          symbolQuery={symbolQuery}
           expandedPaths={expandedPaths}
           onTreeQueryChange={setTreeQuery}
           onSelectedLanguageChange={setSelectedLanguage}
           onSelectedPackageChange={setSelectedPackage}
+          onSymbolQueryChange={setSymbolQuery}
           onToggleDirectory={handleToggleDirectory}
           onExpandAll={handleExpandAll}
           onCollapseAll={handleCollapseAll}
