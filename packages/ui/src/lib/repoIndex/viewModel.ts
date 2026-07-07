@@ -60,6 +60,13 @@ export type RepoMapViewModel = {
   };
 };
 
+export type RepoMapTreeFilterResult = {
+  root: RepoMapTreeNode;
+  matchedFileCount: number;
+  matchedDirectoryCount: number;
+  matchedPaths: string[];
+};
+
 const ROOT_NODE_PATH = '';
 
 const baseName = (path: string): string => path.split('/').filter(Boolean).at(-1) ?? path;
@@ -145,6 +152,52 @@ const buildPackageSummaries = (index: RepoIndex): RepoMapPackageSummary[] => ind
     hasPackageJson: boundary.hasPackageJson,
   };
 }).sort((a, b) => a.path.localeCompare(b.path));
+
+const normalizeTreeFilterQuery = (query: string): string => query.trim().toLowerCase();
+
+export const filterRepoMapTree = (root: RepoMapTreeNode, query: string): RepoMapTreeFilterResult => {
+  const normalizedQuery = normalizeTreeFilterQuery(query);
+  if (!normalizedQuery) {
+    return {
+      root,
+      matchedFileCount: root.fileCount,
+      matchedDirectoryCount: 0,
+      matchedPaths: [],
+    };
+  }
+
+  const matchedPaths: string[] = [];
+  let matchedFileCount = 0;
+  let matchedDirectoryCount = 0;
+
+  const visit = (node: RepoMapTreeNode): RepoMapTreeNode | null => {
+    const searchable = [node.name, node.path, node.language, node.packageName]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    const selfMatches = searchable.includes(normalizedQuery);
+    const filteredChildren = node.children
+      .map(visit)
+      .filter((child): child is RepoMapTreeNode => child !== null);
+
+    if (!selfMatches && filteredChildren.length === 0) return null;
+
+    if (selfMatches) {
+      matchedPaths.push(node.path);
+      if (node.kind === 'file') matchedFileCount += 1;
+      else if (node.path) matchedDirectoryCount += 1;
+    }
+
+    return { ...node, children: filteredChildren };
+  };
+
+  return {
+    root: visit(root) ?? { ...root, children: [], fileCount: 0, totalSize: 0 },
+    matchedFileCount,
+    matchedDirectoryCount,
+    matchedPaths,
+  };
+};
 
 export const buildRepoMapViewModel = (index: RepoIndex, options: { maxSymbols?: number; maxRecentFiles?: number } = {}): RepoMapViewModel => {
   const maxSymbols = options.maxSymbols ?? 20;

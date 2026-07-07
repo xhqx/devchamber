@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { buildRepoIndex } from './indexer';
-import { buildRepoMapViewModel } from './viewModel';
+import { buildRepoMapViewModel, filterRepoMapTree } from './viewModel';
 import type { RepoIndexInputFile } from './schema';
 
 const file = (path: string, content = '', size = content.length, mtimeMs = 1000): RepoIndexInputFile => ({
@@ -66,5 +66,22 @@ describe('repo map view model', () => {
       docsFileCount: 1,
       docsRatio: 1 / 7,
     });
+  });
+
+  test('filters the tree while preserving ancestor directories', () => {
+    const index = buildRepoIndex([
+      file('packages/ui/src/Button.tsx', 'export function Button() { return null; }', 90, 50),
+      file('packages/ui/src/useThing.ts', 'export const useThing = () => null', 80, 40),
+      file('docs/README.md', '# Docs', 30, 60),
+    ], { generatedAt: '2026-07-07T00:00:00.000Z' });
+
+    const viewModel = buildRepoMapViewModel(index);
+    const filtered = filterRepoMapTree(viewModel.root, 'button');
+
+    expect(filtered.matchedFileCount).toBe(1);
+    expect(filtered.matchedDirectoryCount).toBe(0);
+    expect(filtered.matchedPaths).toEqual(['packages/ui/src/Button.tsx']);
+    expect(filtered.root.children.map((node) => node.path)).toEqual(['packages']);
+    expect(filtered.root.children[0]?.children[0]?.children[0]?.children.map((node) => node.path)).toEqual(['packages/ui/src/Button.tsx']);
   });
 });

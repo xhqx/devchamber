@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { buildRepositoryIndexFromFilesApi } from '@/lib/repoIndex/fromFilesApi';
 import type { RepoMapTreeNode, RepoMapViewModel } from '@/lib/repoIndex/viewModel';
-import { buildRepoMapViewModel } from '@/lib/repoIndex/viewModel';
+import { buildRepoMapViewModel, filterRepoMapTree } from '@/lib/repoIndex/viewModel';
 import { cn } from '@/lib/utils';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 
@@ -26,6 +26,16 @@ const joinProjectPath = (projectRoot: string, relativePath: string): string => {
   return `${projectRoot.replace(/\/+$/, '')}/${relativePath.replace(/^\/+/, '')}`;
 };
 
+const collectDirectoryPaths = (node: RepoMapTreeNode): string[] => {
+  const paths: string[] = [];
+  const visit = (current: RepoMapTreeNode) => {
+    if (current.kind === 'directory') paths.push(current.path);
+    for (const child of current.children) visit(child);
+  };
+  visit(node);
+  return paths;
+};
+
 type RepoMapMetricCardProps = {
   label: string;
   value: React.ReactNode;
@@ -43,11 +53,15 @@ const RepoMapMetricCard: React.FC<RepoMapMetricCardProps> = ({ label, value, det
 type RepoTreeProps = {
   node: RepoMapTreeNode;
   onOpenFile?: (path: string) => void;
+  expandedPaths: Set<string>;
+  onToggleDirectory: (path: string) => void;
 };
 
-const RepoTreeNodeRow: React.FC<RepoTreeProps> = ({ node, onOpenFile }) => {
+const RepoTreeNodeRow: React.FC<RepoTreeProps> = ({ node, onOpenFile, expandedPaths, onToggleDirectory }) => {
   const isFile = node.kind === 'file';
   const isRoot = node.path === '';
+  const isExpanded = isFile || isRoot || expandedPaths.has(node.path);
+  const hasChildren = node.children.length > 0;
   return (
     <li>
       <div
@@ -58,26 +72,43 @@ const RepoTreeNodeRow: React.FC<RepoTreeProps> = ({ node, onOpenFile }) => {
         )}
         style={{ paddingLeft: `${Math.max(node.depth, isRoot ? 0 : node.depth - 1) * 12 + 8}px` }}
         onClick={() => {
-          if (isFile) onOpenFile?.(node.path);
+          if (isFile) {
+            onOpenFile?.(node.path);
+            return;
+          }
+          if (!isRoot && hasChildren) onToggleDirectory(node.path);
         }}
-        role={isFile && onOpenFile ? 'button' : undefined}
-        tabIndex={isFile && onOpenFile ? 0 : undefined}
+        role={!isRoot && !isFile && hasChildren ? 'button' : isFile && onOpenFile ? 'button' : undefined}
+        tabIndex={!isRoot && !isFile && hasChildren ? 0 : isFile && onOpenFile ? 0 : undefined}
         onKeyDown={(event) => {
-          if (!isFile || !onOpenFile || (event.key !== 'Enter' && event.key !== ' ')) return;
-          event.preventDefault();
-          onOpenFile(node.path);
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          if (isFile && onOpenFile) {
+            event.preventDefault();
+            onOpenFile(node.path);
+            return;
+          }
+          if (!isRoot && hasChildren) {
+            event.preventDefault();
+            onToggleDirectory(node.path);
+          }
         }}
       >
-        <span aria-hidden="true" className="shrink-0">{isFile ? '•' : '▾'}</span>
+        <span aria-hidden="true" className="shrink-0">{isFile ? '•' : isExpanded ? '▾' : '▸'}</span>
         <span className="truncate font-medium">{node.name}</span>
         {isFile && node.language ? <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">{node.language}</span> : null}
         {node.isDocs ? <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase text-primary">docs</span> : null}
         <span className="ml-auto shrink-0 text-muted-foreground">{isFile ? formatBytes(node.totalSize) : `${node.fileCount} files`}</span>
       </div>
-      {node.children.length > 0 ? (
+      {isExpanded && node.children.length > 0 ? (
         <ul className="space-y-0.5">
           {node.children.map((child) => (
-            <RepoTreeNodeRow key={`${child.kind}:${child.path}`} node={child} onOpenFile={onOpenFile} />
+            <RepoTreeNodeRow
+              key={`${child.kind}:${child.path}`}
+              node={child}
+              onOpenFile={onOpenFile}
+              expandedPaths={expandedPaths}
+              onToggleDirectory={onToggleDirectory}
+            />
           ))}
         </ul>
       ) : null}
@@ -88,22 +119,73 @@ const RepoTreeNodeRow: React.FC<RepoTreeProps> = ({ node, onOpenFile }) => {
 type RepoMapContentProps = {
   viewModel: RepoMapViewModel;
   projectRoot: string;
+  treeQuery: string;
+  expandedPaths: Set<string>;
+  onTreeQueryChange: (query: string) => void;
+  onToggleDirectory: (path: string) => void;
+  onExpandAll: () => void;
+  onCollapseAll: () => void;
   onOpenFile?: (path: string, line?: number) => void;
 };
 
-const RepoMapContent: React.FC<RepoMapContentProps> = ({ viewModel, projectRoot, onOpenFile }) => {
+const RepoMapContent: React.FC<RepoMapContentProps> = ({
+  viewModel,
+  projectRoot,
+  treeQuery,
+  expandedPaths,
+  onTreeQueryChange,
+  onToggleDirectory,
+  onExpandAll,
+  onCollapseAll,
+  onOpenFile,
+}) => {
   const docsPercent = Math.round(viewModel.docsCoverage.docsRatio * 100);
+  const filteredTree = React.useMemo(() => filterRepoMapTree(viewModel.root, treeQuery), [treeQuery, viewModel.root]);
+  const hasFilter = treeQuery.trim().length > 0;
+  const visibleRoot = filteredTree.root;
+  const visibleExpandedPaths = React.useMemo(
+    () => hasFilter ? new Set(collectDirectoryPaths(visibleRoot)) : expandedPaths,
+    [expandedPaths, hasFilter, visibleRoot],
+  );
   return (
     <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
       <section className="min-h-0 rounded-xl border border-border/60 bg-background/60">
         <div className="border-b border-border/60 px-4 py-3">
-          <h3 className="typography-ui-label font-semibold text-foreground">Repository tree</h3>
-          <p className="typography-meta text-muted-foreground">{projectRoot || 'Active project'} · {formatBytes(viewModel.totals.totalSize)}</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="typography-ui-label font-semibold text-foreground">Repository tree</h3>
+              <p className="typography-meta text-muted-foreground">
+                {projectRoot || 'Active project'} · {formatBytes(viewModel.totals.totalSize)}
+                {hasFilter ? ` · ${filteredTree.matchedFileCount} matching files` : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={onExpandAll}>Expand all</Button>
+              <Button size="sm" variant="ghost" onClick={onCollapseAll}>Collapse all</Button>
+            </div>
+          </div>
+          <input
+            value={treeQuery}
+            onChange={(event) => onTreeQueryChange(event.target.value)}
+            placeholder="Filter files, folders, languages…"
+            className="mt-3 h-9 w-full rounded-md border border-border/60 bg-background px-3 typography-ui-body text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+          />
         </div>
-        <div className="max-h-[calc(100vh-260px)] overflow-auto p-2">
-          <ul className="space-y-0.5">
-            <RepoTreeNodeRow node={viewModel.root} onOpenFile={(path) => onOpenFile?.(path)} />
-          </ul>
+        <div className="max-h-[calc(100vh-300px)] overflow-auto p-2">
+          {hasFilter && visibleRoot.children.length === 0 ? (
+            <div className="rounded-lg border border-border/60 bg-[var(--surface-elevated)]/60 p-4 typography-meta text-muted-foreground">
+              No files match “{treeQuery.trim()}”.
+            </div>
+          ) : (
+            <ul className="space-y-0.5">
+              <RepoTreeNodeRow
+                node={visibleRoot}
+                onOpenFile={(path) => onOpenFile?.(path)}
+                expandedPaths={visibleExpandedPaths}
+                onToggleDirectory={onToggleDirectory}
+              />
+            </ul>
+          )}
         </div>
       </section>
 
@@ -179,6 +261,8 @@ export const RepoMapView: React.FC = () => {
   const [viewModel, setViewModel] = React.useState<RepoMapViewModel | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [treeQuery, setTreeQuery] = React.useState('');
+  const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(() => new Set(['']));
 
   const refresh = React.useCallback(async () => {
     if (!projectRoot) {
@@ -203,6 +287,34 @@ export const RepoMapView: React.FC = () => {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  React.useEffect(() => {
+    setTreeQuery('');
+    setExpandedPaths(new Set(['']));
+  }, [projectRoot]);
+
+  React.useEffect(() => {
+    if (!viewModel) return;
+    setExpandedPaths(new Set(collectDirectoryPaths(viewModel.root)));
+  }, [viewModel]);
+
+  const handleToggleDirectory = React.useCallback((path: string) => {
+    setExpandedPaths((current) => {
+      const next = new Set(current);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
+
+  const handleExpandAll = React.useCallback(() => {
+    if (!viewModel) return;
+    setExpandedPaths(new Set(collectDirectoryPaths(viewModel.root)));
+  }, [viewModel]);
+
+  const handleCollapseAll = React.useCallback(() => {
+    setExpandedPaths(new Set(['']));
+  }, []);
 
   const handleOpenFile = React.useCallback((path: string, line?: number) => {
     if (!editor?.openFile) return;
@@ -232,7 +344,17 @@ export const RepoMapView: React.FC = () => {
           Building repo map…
         </div>
       ) : viewModel ? (
-        <RepoMapContent viewModel={viewModel} projectRoot={projectRoot} onOpenFile={handleOpenFile} />
+        <RepoMapContent
+          viewModel={viewModel}
+          projectRoot={projectRoot}
+          treeQuery={treeQuery}
+          expandedPaths={expandedPaths}
+          onTreeQueryChange={setTreeQuery}
+          onToggleDirectory={handleToggleDirectory}
+          onExpandAll={handleExpandAll}
+          onCollapseAll={handleCollapseAll}
+          onOpenFile={handleOpenFile}
+        />
       ) : (
         <div className="m-4 rounded-xl border border-border/60 bg-[var(--surface-elevated)]/60 p-6 typography-meta text-muted-foreground">
           Select a project and refresh to build a repo map.
