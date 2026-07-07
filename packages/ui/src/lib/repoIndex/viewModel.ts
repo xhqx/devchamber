@@ -60,6 +60,12 @@ export type RepoMapViewModel = {
   };
 };
 
+export type RepoMapTreeFilterOptions = {
+  query?: string;
+  languages?: RepoLanguage[];
+  packageNames?: string[];
+};
+
 export type RepoMapTreeFilterResult = {
   root: RepoMapTreeNode;
   matchedFileCount: number;
@@ -155,9 +161,24 @@ const buildPackageSummaries = (index: RepoIndex): RepoMapPackageSummary[] => ind
 
 const normalizeTreeFilterQuery = (query: string): string => query.trim().toLowerCase();
 
-export const filterRepoMapTree = (root: RepoMapTreeNode, query: string): RepoMapTreeFilterResult => {
-  const normalizedQuery = normalizeTreeFilterQuery(query);
-  if (!normalizedQuery) {
+const normalizeFilterSet = (values: string[] | undefined): Set<string> => new Set(
+  (values ?? [])
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+const getFilterOptions = (filter: string | RepoMapTreeFilterOptions): Required<Pick<RepoMapTreeFilterOptions, 'query'>> & Pick<RepoMapTreeFilterOptions, 'languages' | 'packageNames'> => (
+  typeof filter === 'string' ? { query: filter } : { query: filter.query ?? '', languages: filter.languages, packageNames: filter.packageNames }
+);
+
+export const filterRepoMapTree = (root: RepoMapTreeNode, filter: string | RepoMapTreeFilterOptions): RepoMapTreeFilterResult => {
+  const options = getFilterOptions(filter);
+  const normalizedQuery = normalizeTreeFilterQuery(options.query);
+  const languageFilter = normalizeFilterSet(options.languages);
+  const packageFilter = normalizeFilterSet(options.packageNames);
+  const hasLanguageFilter = languageFilter.size > 0;
+  const hasPackageFilter = packageFilter.size > 0;
+  if (!normalizedQuery && !hasLanguageFilter && !hasPackageFilter) {
     return {
       root,
       matchedFileCount: root.fileCount,
@@ -175,7 +196,10 @@ export const filterRepoMapTree = (root: RepoMapTreeNode, query: string): RepoMap
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
-    const selfMatches = searchable.includes(normalizedQuery);
+    const queryMatches = !normalizedQuery || searchable.includes(normalizedQuery);
+    const languageMatches = !hasLanguageFilter || (node.kind === 'file' && Boolean(node.language && languageFilter.has(node.language)));
+    const packageMatches = !hasPackageFilter || (node.kind === 'file' && Boolean(node.packageName && packageFilter.has(node.packageName.toLowerCase())));
+    const selfMatches = queryMatches && languageMatches && packageMatches;
     const filteredChildren = node.children
       .map(visit)
       .filter((child): child is RepoMapTreeNode => child !== null);

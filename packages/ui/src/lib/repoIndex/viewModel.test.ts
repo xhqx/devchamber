@@ -84,4 +84,26 @@ describe('repo map view model', () => {
     expect(filtered.root.children.map((node) => node.path)).toEqual(['packages']);
     expect(filtered.root.children[0]?.children[0]?.children[0]?.children.map((node) => node.path)).toEqual(['packages/ui/src/Button.tsx']);
   });
+
+  test('combines language and package filters for tree results', () => {
+    const index = buildRepoIndex([
+      file('package.json', JSON.stringify({ name: 'root' }), 100, 10),
+      file('packages/ui/package.json', JSON.stringify({ name: '@scope/ui' }), 120, 20),
+      file('packages/ui/src/Button.tsx', 'export function Button() { return null; }', 90, 50),
+      file('packages/ui/src/theme.css', '.button { color: red; }', 80, 40),
+      file('packages/api/package.json', JSON.stringify({ name: '@scope/api' }), 110, 15),
+      file('packages/api/src/server.ts', 'export function server() { return null; }', 70, 35),
+    ], { generatedAt: '2026-07-07T00:00:00.000Z' });
+
+    const viewModel = buildRepoMapViewModel(index);
+    const filtered = filterRepoMapTree(viewModel.root, {
+      languages: ['typescript'],
+      packageNames: ['@scope/ui'],
+    });
+
+    expect(filtered.matchedFileCount).toBe(1);
+    expect(filtered.matchedPaths).toEqual(['packages/ui/src/Button.tsx']);
+    expect(filtered.root.children.map((node) => node.path)).toEqual(['packages']);
+    expect(filtered.root.children[0]?.children.map((node) => node.path)).toEqual(['packages/ui']);
+  });
 });

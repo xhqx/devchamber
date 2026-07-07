@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { buildRepositoryIndexFromFilesApi } from '@/lib/repoIndex/fromFilesApi';
+import type { RepoLanguage } from '@/lib/repoIndex/schema';
 import type { RepoMapTreeNode, RepoMapViewModel } from '@/lib/repoIndex/viewModel';
 import { buildRepoMapViewModel, filterRepoMapTree } from '@/lib/repoIndex/viewModel';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,42 @@ const collectDirectoryPaths = (node: RepoMapTreeNode): string[] => {
   };
   visit(node);
   return paths;
+};
+
+const collectLanguageOptions = (node: RepoMapTreeNode): RepoLanguage[] => {
+  const languages = new Set<RepoLanguage>();
+  const visit = (current: RepoMapTreeNode) => {
+    if (current.kind === 'file' && current.language) languages.add(current.language);
+    for (const child of current.children) visit(child);
+  };
+  visit(node);
+  return Array.from(languages).sort((a, b) => a.localeCompare(b));
+};
+
+const getFileIcon = (node: RepoMapTreeNode): string => {
+  if (node.isDocs) return '📘';
+  switch (node.language) {
+    case 'typescript': return node.name.endsWith('.tsx') ? '⚛️' : '🔷';
+    case 'javascript': return '🟨';
+    case 'json': return '🧩';
+    case 'markdown': return '📝';
+    case 'css': return '🎨';
+    case 'html': return '🌐';
+    case 'python': return '🐍';
+    case 'shell': return '💻';
+    case 'go': return '🐹';
+    case 'rust': return '🦀';
+    default: return '📄';
+  }
+};
+
+const getDirectoryIcon = (node: RepoMapTreeNode, isExpanded: boolean): string => {
+  if (node.path === '') return '🏠';
+  if (node.packageName || node.name === 'packages') return isExpanded ? '📦' : '📦';
+  if (node.name === 'docs' || node.name === 'documentation') return isExpanded ? '📚' : '📚';
+  if (node.name === 'src') return isExpanded ? '🧱' : '🧱';
+  if (node.name === 'tests' || node.name === '__tests__') return isExpanded ? '🧪' : '🧪';
+  return isExpanded ? '📂' : '📁';
 };
 
 type RepoMapMetricCardProps = {
@@ -93,7 +130,8 @@ const RepoTreeNodeRow: React.FC<RepoTreeProps> = ({ node, onOpenFile, expandedPa
           }
         }}
       >
-        <span aria-hidden="true" className="shrink-0">{isFile ? '•' : isExpanded ? '▾' : '▸'}</span>
+        <span aria-hidden="true" className="w-4 shrink-0 text-center">{isFile ? getFileIcon(node) : getDirectoryIcon(node, isExpanded)}</span>
+        {!isFile && !isRoot ? <span aria-hidden="true" className="shrink-0 text-muted-foreground">{isExpanded ? '▾' : '▸'}</span> : null}
         <span className="truncate font-medium">{node.name}</span>
         {isFile && node.language ? <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">{node.language}</span> : null}
         {node.isDocs ? <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase text-primary">docs</span> : null}
@@ -120,8 +158,12 @@ type RepoMapContentProps = {
   viewModel: RepoMapViewModel;
   projectRoot: string;
   treeQuery: string;
+  selectedLanguage: RepoLanguage | 'all';
+  selectedPackage: string;
   expandedPaths: Set<string>;
   onTreeQueryChange: (query: string) => void;
+  onSelectedLanguageChange: (language: RepoLanguage | 'all') => void;
+  onSelectedPackageChange: (packageName: string) => void;
   onToggleDirectory: (path: string) => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
@@ -132,16 +174,26 @@ const RepoMapContent: React.FC<RepoMapContentProps> = ({
   viewModel,
   projectRoot,
   treeQuery,
+  selectedLanguage,
+  selectedPackage,
   expandedPaths,
   onTreeQueryChange,
+  onSelectedLanguageChange,
+  onSelectedPackageChange,
   onToggleDirectory,
   onExpandAll,
   onCollapseAll,
   onOpenFile,
 }) => {
   const docsPercent = Math.round(viewModel.docsCoverage.docsRatio * 100);
-  const filteredTree = React.useMemo(() => filterRepoMapTree(viewModel.root, treeQuery), [treeQuery, viewModel.root]);
-  const hasFilter = treeQuery.trim().length > 0;
+  const languageOptions = React.useMemo(() => collectLanguageOptions(viewModel.root), [viewModel.root]);
+  const packageOptions = viewModel.packages.filter((entry) => entry.name);
+  const filteredTree = React.useMemo(() => filterRepoMapTree(viewModel.root, {
+    query: treeQuery,
+    languages: selectedLanguage === 'all' ? [] : [selectedLanguage],
+    packageNames: selectedPackage ? [selectedPackage] : [],
+  }), [selectedLanguage, selectedPackage, treeQuery, viewModel.root]);
+  const hasFilter = treeQuery.trim().length > 0 || selectedLanguage !== 'all' || selectedPackage.length > 0;
   const visibleRoot = filteredTree.root;
   const visibleExpandedPaths = React.useMemo(
     () => hasFilter ? new Set(collectDirectoryPaths(visibleRoot)) : expandedPaths,
@@ -170,6 +222,34 @@ const RepoMapContent: React.FC<RepoMapContentProps> = ({
             placeholder="Filter files, folders, languages…"
             className="mt-3 h-9 w-full rounded-md border border-border/60 bg-background px-3 typography-ui-body text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
           />
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <label className="min-w-0 typography-meta text-muted-foreground">
+              Language
+              <select
+                value={selectedLanguage}
+                onChange={(event) => onSelectedLanguageChange(event.target.value as RepoLanguage | 'all')}
+                className="mt-1 h-9 w-full rounded-md border border-border/60 bg-background px-2 typography-ui-body text-foreground outline-none focus:border-primary"
+              >
+                <option value="all">All languages</option>
+                {languageOptions.map((language) => (
+                  <option key={language} value={language}>{language}</option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-0 typography-meta text-muted-foreground">
+              Package
+              <select
+                value={selectedPackage}
+                onChange={(event) => onSelectedPackageChange(event.target.value)}
+                className="mt-1 h-9 w-full rounded-md border border-border/60 bg-background px-2 typography-ui-body text-foreground outline-none focus:border-primary"
+              >
+                <option value="">All packages</option>
+                {packageOptions.map((entry) => (
+                  <option key={entry.path || 'root'} value={entry.name}>{entry.name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
         <div className="max-h-[calc(100vh-300px)] overflow-auto p-2">
           {hasFilter && visibleRoot.children.length === 0 ? (
@@ -262,6 +342,8 @@ export const RepoMapView: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [treeQuery, setTreeQuery] = React.useState('');
+  const [selectedLanguage, setSelectedLanguage] = React.useState<RepoLanguage | 'all'>('all');
+  const [selectedPackage, setSelectedPackage] = React.useState('');
   const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(() => new Set(['']));
 
   const refresh = React.useCallback(async () => {
@@ -290,6 +372,8 @@ export const RepoMapView: React.FC = () => {
 
   React.useEffect(() => {
     setTreeQuery('');
+    setSelectedLanguage('all');
+    setSelectedPackage('');
     setExpandedPaths(new Set(['']));
   }, [projectRoot]);
 
@@ -348,8 +432,12 @@ export const RepoMapView: React.FC = () => {
           viewModel={viewModel}
           projectRoot={projectRoot}
           treeQuery={treeQuery}
+          selectedLanguage={selectedLanguage}
+          selectedPackage={selectedPackage}
           expandedPaths={expandedPaths}
           onTreeQueryChange={setTreeQuery}
+          onSelectedLanguageChange={setSelectedLanguage}
+          onSelectedPackageChange={setSelectedPackage}
           onToggleDirectory={handleToggleDirectory}
           onExpandAll={handleExpandAll}
           onCollapseAll={handleCollapseAll}
