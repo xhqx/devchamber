@@ -20,7 +20,10 @@ Safe defaults:
 - `packages/ui/src/lib/changeExplanations/*` — pure schema, store, code-change detection, docs-commit status, project-local change-note persistence, and structured explanation generation helpers for IDE explanations and docs-required decisions.
 - `packages/ui/src/components/changeExplanations/*` — UI surfaces for generated change notes, including grouped file/diff comments, docs status chips, and follow-up actions used by diff review panels.
 - `packages/ui/src/lib/autocomplete/*` and `packages/ui/src/components/autocomplete/*` — conventional commit suggestion helpers plus prompt-composer source ranking/menu primitives for `@file`, `#symbol`, `/command`, and `task:` autocomplete.
-- `packages/ui/src/lib/repoIndex/*` — pure repository index schema, ignore rules, and indexing helpers for future runtime bridges, autocomplete sources, docs coverage, task links, and context selection.
+- `packages/ui/src/lib/repoIndex/*` — pure repository index schema, ignore rules, indexing helpers, tree filtering, symbol search, package/language summaries, and repository-map view models for runtime indexing, autocomplete sources, docs coverage, task links, and context selection.
+- `packages/ui/src/components/views/RepoMapView.tsx` — project Repo Map surface that builds an index through the runtime files bridge, exposes tree/package/language filters, lists recent files/docs, and lets users search/jump to indexed symbols.
+- `packages/ui/src/lib/kanban/*` — project-local board schema, deterministic store/view-model helpers, branch/file attachment helpers, and controller functions for loading/updating `.openchamber/tasks/board.json` through the runtime files bridge.
+- `packages/ui/src/components/views/KanbanProjectView.tsx` and `packages/ui/src/components/kanban/*` — connected project board with create/edit/move actions, session/change-file/branch attachments, drag-and-drop column moves, optimistic persistence, and sync/error status UI.
 
 ## Project-local data
 

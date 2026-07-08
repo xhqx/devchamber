@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Fork/IDE: added a project Repo Map with file/folder type icons, language/package filters, and searchable symbols that can jump back into files.
+- Fork/IDE: expanded the project Kanban board with create/edit/move flows, session/change-file/branch attachments, drag-and-drop column moves, optimistic saves, pending-card states, and sync/error status messages.
+
 ## [1.14.0] - 2026-07-05
 
 - Voice: voice input was rebuilt around live streaming transcription — the composer mic shows a live transcript with a volume meter and timer while you speak, and a recording can be cancelled, inserted, or inserted and sent; failed transcriptions keep their audio so you can retry or accept the partial text.
