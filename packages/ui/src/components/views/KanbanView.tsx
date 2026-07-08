@@ -11,6 +11,8 @@ type KanbanViewProps = {
   className?: string;
   isLoading?: boolean;
   error?: string | null;
+  syncMessage?: string | null;
+  pendingTaskIds?: Set<string>;
   onCreateTask?: () => void;
   onEditTask?: (task: KanbanTask) => void;
   currentSessionId?: string | null;
@@ -26,6 +28,8 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
   className,
   isLoading = false,
   error = null,
+  syncMessage = null,
+  pendingTaskIds,
   onCreateTask,
   onEditTask,
   currentSessionId,
@@ -36,6 +40,12 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
   onRefresh,
 }) => {
   const viewModel = React.useMemo(() => buildKanbanBoardViewModel(board), [board]);
+  const [activeDragTaskId, setActiveDragTaskId] = React.useState<string | null>(null);
+
+  const handleMoveTask = React.useCallback((taskId: string, status: KanbanTaskStatus) => {
+    setActiveDragTaskId(null);
+    onMoveTask?.(taskId, status);
+  }, [onMoveTask]);
 
   return (
     <div className={cn('flex h-full min-h-0 flex-col bg-background text-foreground', className)}>
@@ -56,6 +66,10 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
         <div className="mx-4 mt-3 rounded-md border border-[color-mix(in_srgb,var(--status-error)_30%,transparent)] bg-[color-mix(in_srgb,var(--status-error)_8%,transparent)] px-3 py-2 text-sm text-[var(--status-error)]">
           {error}
         </div>
+      ) : syncMessage ? (
+        <div className="mx-4 mt-3 rounded-md border border-border/60 bg-[var(--surface-elevated)]/60 px-3 py-2 typography-meta text-muted-foreground">
+          {syncMessage}
+        </div>
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-x-auto p-4">
@@ -70,12 +84,16 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                 key={column.id}
                 board={board}
                 column={column}
+                activeDragTaskId={activeDragTaskId}
+                pendingTaskIds={pendingTaskIds}
                 onEditTask={onEditTask}
                 currentSessionId={currentSessionId}
                 onAttachCurrentSession={onAttachCurrentSession}
                 onAttachChangedFiles={onAttachChangedFiles}
                 onCreateBranch={onCreateBranch}
-                onMoveTask={onMoveTask}
+                onMoveTask={handleMoveTask}
+                onTaskDragStart={setActiveDragTaskId}
+                onTaskDragEnd={() => setActiveDragTaskId(null)}
               />
             ))}
           </div>

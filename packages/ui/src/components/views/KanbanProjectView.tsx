@@ -21,27 +21,46 @@ export const KanbanProjectView: React.FC = () => {
   const [board, setBoard] = React.useState<KanbanBoard>(() => createEmptyKanbanBoard());
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = React.useState<string | null>(null);
+  const [pendingTaskIds, setPendingTaskIds] = React.useState<Set<string>>(() => new Set());
 
   const projectRoot = activeProject?.path ?? '';
+
+  const markTaskPending = React.useCallback((taskId: string, isPending: boolean) => {
+    setPendingTaskIds((current) => {
+      const next = new Set(current);
+      if (isPending) next.add(taskId);
+      else next.delete(taskId);
+      return next;
+    });
+  }, []);
+
+  const setSavedMessage = React.useCallback((action: string, updatedAt: string) => {
+    setSyncMessage(`${action} · saved ${new Date(updatedAt).toLocaleTimeString()}`);
+  }, []);
 
   const refresh = React.useCallback(async () => {
     if (!projectRoot) {
       setBoard(createEmptyKanbanBoard());
       setError('Select a project to load its board.');
+      setSyncMessage(null);
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    setSyncMessage('Loading board…');
     try {
       const nextBoard = await loadProjectKanbanBoard({ files, projectRoot });
       setBoard(nextBoard);
+      setSavedMessage('Board synced', nextBoard.updatedAt);
     } catch (refreshError) {
+      setSyncMessage(null);
       setError(refreshError instanceof Error ? refreshError.message : 'Failed to load project board.');
     } finally {
       setIsLoading(false);
     }
-  }, [files, projectRoot]);
+  }, [files, projectRoot, setSavedMessage]);
 
   React.useEffect(() => {
     void refresh();
@@ -60,6 +79,7 @@ export const KanbanProjectView: React.FC = () => {
 
     try {
       setError(null);
+      setSyncMessage('Creating task…');
       const { board: persistedBoard } = await createProjectKanbanTask({
         files,
         projectRoot,
@@ -67,10 +87,12 @@ export const KanbanProjectView: React.FC = () => {
         now: updatedAt,
       });
       setBoard(persistedBoard);
+      setSavedMessage('Task created', persistedBoard.updatedAt);
     } catch (createError) {
+      setSyncMessage(null);
       setError(createError instanceof Error ? createError.message : 'Failed to create task.');
     }
-  }, [files, projectRoot]);
+  }, [files, projectRoot, setSavedMessage]);
 
   const handleEditTask = React.useCallback(async (task: KanbanTask) => {
     if (!projectRoot) {
@@ -95,15 +117,21 @@ export const KanbanProjectView: React.FC = () => {
       updatedAt,
     });
     setError(null);
+    setSyncMessage(`Saving “${title}”…`);
+    markTaskPending(task.id, true);
 
     try {
       const persistedBoard = await updateProjectKanbanTask({ files, projectRoot, taskId: task.id, patch, now: updatedAt });
       setBoard(persistedBoard);
+      setSavedMessage('Task saved', persistedBoard.updatedAt);
     } catch (editError) {
       setBoard(previousBoard);
+      setSyncMessage(null);
       setError(editError instanceof Error ? editError.message : 'Failed to edit task.');
+    } finally {
+      markTaskPending(task.id, false);
     }
-  }, [board, files, projectRoot]);
+  }, [board, files, markTaskPending, projectRoot, setSavedMessage]);
 
   const handleAttachCurrentSession = React.useCallback(async (task: KanbanTask) => {
     if (!projectRoot) {
@@ -128,15 +156,21 @@ export const KanbanProjectView: React.FC = () => {
       updatedAt,
     });
     setError(null);
+    setSyncMessage('Attaching session…');
+    markTaskPending(task.id, true);
 
     try {
       const persistedBoard = await updateProjectKanbanTask({ files, projectRoot, taskId: task.id, patch: { sessionIds }, now: updatedAt });
       setBoard(persistedBoard);
+      setSavedMessage('Session attached', persistedBoard.updatedAt);
     } catch (attachError) {
       setBoard(previousBoard);
+      setSyncMessage(null);
       setError(attachError instanceof Error ? attachError.message : 'Failed to attach current session.');
+    } finally {
+      markTaskPending(task.id, false);
     }
-  }, [board, currentSessionId, files, projectRoot]);
+  }, [board, currentSessionId, files, markTaskPending, projectRoot, setSavedMessage]);
 
   const handleAttachChangedFiles = React.useCallback(async (task: KanbanTask) => {
     if (!projectRoot) {
@@ -145,11 +179,14 @@ export const KanbanProjectView: React.FC = () => {
     }
 
     const previousBoard = board;
+    markTaskPending(task.id, true);
     try {
       setError(null);
+      setSyncMessage('Collecting changed files…');
       const status = await git.getGitStatus(projectRoot, { mode: 'light' });
       const changedFiles = collectKanbanAttachableChangedFiles(status);
       if (changedFiles.length === 0) {
+        setSyncMessage(null);
         setError('No changed files to attach.');
         return;
       }
@@ -162,13 +199,18 @@ export const KanbanProjectView: React.FC = () => {
         updatedAt,
       });
 
+      setSyncMessage(`Attaching ${changedFiles.length} changed file${changedFiles.length === 1 ? '' : 's'}…`);
       const persistedBoard = await updateProjectKanbanTask({ files, projectRoot, taskId: task.id, patch: { filePaths }, now: updatedAt });
       setBoard(persistedBoard);
+      setSavedMessage('Changed files attached', persistedBoard.updatedAt);
     } catch (attachError) {
       setBoard(previousBoard);
+      setSyncMessage(null);
       setError(attachError instanceof Error ? attachError.message : 'Failed to attach changed files.');
+    } finally {
+      markTaskPending(task.id, false);
     }
-  }, [board, files, git, projectRoot]);
+  }, [board, files, git, markTaskPending, projectRoot, setSavedMessage]);
 
   const handleCreateBranch = React.useCallback(async (task: KanbanTask) => {
     if (!projectRoot) {
@@ -188,16 +230,22 @@ export const KanbanProjectView: React.FC = () => {
       updatedAt,
     });
     setError(null);
+    setSyncMessage(`Creating branch ${branch}…`);
+    markTaskPending(task.id, true);
 
     try {
       await git.createBranch(projectRoot, branch);
       const persistedBoard = await updateProjectKanbanTask({ files, projectRoot, taskId: task.id, patch: { branch }, now: updatedAt });
       setBoard(persistedBoard);
+      setSavedMessage('Branch created', persistedBoard.updatedAt);
     } catch (branchError) {
       setBoard(previousBoard);
+      setSyncMessage(null);
       setError(branchError instanceof Error ? branchError.message : 'Failed to create task branch.');
+    } finally {
+      markTaskPending(task.id, false);
     }
-  }, [board, files, git, projectRoot]);
+  }, [board, files, git, markTaskPending, projectRoot, setSavedMessage]);
 
   const handleMoveTask = React.useCallback(async (taskId: string, status: KanbanTaskStatus) => {
     if (!projectRoot) {
@@ -224,21 +272,29 @@ export const KanbanProjectView: React.FC = () => {
     };
     setBoard(optimisticBoard);
     setError(null);
+    setSyncMessage(`Moving “${task?.title ?? 'task'}” to ${status}…`);
+    markTaskPending(taskId, true);
 
     try {
       const persistedBoard = await moveProjectKanbanTask({ files, projectRoot, taskId, status, blockedReason, now: updatedAt });
       setBoard(persistedBoard);
+      setSavedMessage('Task moved', persistedBoard.updatedAt);
     } catch (moveError) {
       setBoard(previousBoard);
+      setSyncMessage(null);
       setError(moveError instanceof Error ? moveError.message : 'Failed to move task.');
+    } finally {
+      markTaskPending(taskId, false);
     }
-  }, [board, files, projectRoot]);
+  }, [board, files, markTaskPending, projectRoot, setSavedMessage]);
 
   return (
     <KanbanView
       board={board}
       isLoading={isLoading}
       error={error}
+      syncMessage={syncMessage}
+      pendingTaskIds={pendingTaskIds}
       onCreateTask={handleCreateTask}
       onEditTask={handleEditTask}
       currentSessionId={currentSessionId}

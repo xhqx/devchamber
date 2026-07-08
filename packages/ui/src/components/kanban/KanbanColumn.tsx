@@ -8,16 +8,40 @@ import { KanbanTaskCard } from './KanbanTaskCard';
 type KanbanColumnProps = {
   board: KanbanBoard;
   column: KanbanColumnViewModel;
+  activeDragTaskId?: string | null;
+  pendingTaskIds?: Set<string>;
   onEditTask?: (task: KanbanTask) => void;
   currentSessionId?: string | null;
   onAttachCurrentSession?: (task: KanbanTask) => void;
   onAttachChangedFiles?: (task: KanbanTask) => void;
   onCreateBranch?: (task: KanbanTask) => void;
   onMoveTask?: (taskId: string, status: KanbanTaskStatus) => void;
+  onTaskDragStart?: (taskId: string) => void;
+  onTaskDragEnd?: () => void;
 };
 
-export const KanbanColumn: React.FC<KanbanColumnProps> = ({ board, column, onEditTask, currentSessionId, onAttachCurrentSession, onAttachChangedFiles, onCreateBranch, onMoveTask }) => (
-  <section className="flex min-h-0 min-w-[17rem] flex-1 flex-col rounded-xl border border-border/60 bg-[var(--surface-elevated)]/60">
+export const KanbanColumn: React.FC<KanbanColumnProps> = ({ board, column, activeDragTaskId = null, pendingTaskIds, onEditTask, currentSessionId, onAttachCurrentSession, onAttachChangedFiles, onCreateBranch, onMoveTask, onTaskDragStart, onTaskDragEnd }) => {
+  const canDropActiveTask = Boolean(activeDragTaskId && board.tasks.find((task) => task.id === activeDragTaskId)?.status !== column.id);
+
+  return (
+    <section
+      className={cn(
+        'flex min-h-0 min-w-[17rem] flex-1 flex-col rounded-xl border border-border/60 bg-[var(--surface-elevated)]/60 transition-colors',
+        canDropActiveTask ? 'border-primary/50 bg-primary/5' : '',
+      )}
+      onDragOver={(event) => {
+        if (!canDropActiveTask) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+      }}
+      onDrop={(event) => {
+        const taskId = event.dataTransfer.getData('text/plain') || activeDragTaskId;
+        if (!taskId || !canDropActiveTask) return;
+        event.preventDefault();
+        onMoveTask?.(taskId, column.id);
+        onTaskDragEnd?.();
+      }}
+    >
     <header className="border-b border-border/50 px-3 py-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -42,12 +66,15 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ board, column, onEdi
             key={task.id}
             board={board}
             task={task}
+            isPending={pendingTaskIds?.has(task.id) ?? false}
             onEditTask={onEditTask}
             currentSessionId={currentSessionId}
             onAttachCurrentSession={onAttachCurrentSession}
             onAttachChangedFiles={onAttachChangedFiles}
             onCreateBranch={onCreateBranch}
             onMoveTask={onMoveTask}
+            onDragStart={onTaskDragStart}
+            onDragEnd={onTaskDragEnd}
           />
         ))
       ) : (
@@ -56,5 +83,6 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ board, column, onEdi
         </div>
       )}
     </div>
-  </section>
-);
+    </section>
+  );
+};

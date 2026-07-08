@@ -14,21 +14,36 @@ const PRIORITY_CLASSES: Record<'low' | 'medium' | 'high', string> = {
 type KanbanTaskCardProps = {
   board: KanbanBoard;
   task: KanbanTask;
+  isPending?: boolean;
   onEditTask?: (task: KanbanTask) => void;
   currentSessionId?: string | null;
   onAttachCurrentSession?: (task: KanbanTask) => void;
   onAttachChangedFiles?: (task: KanbanTask) => void;
   onCreateBranch?: (task: KanbanTask) => void;
   onMoveTask?: (taskId: string, status: KanbanTaskStatus) => void;
+  onDragStart?: (taskId: string) => void;
+  onDragEnd?: () => void;
 };
 
-export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onEditTask, currentSessionId, onAttachCurrentSession, onAttachChangedFiles, onCreateBranch, onMoveTask }) => {
+export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, isPending = false, onEditTask, currentSessionId, onAttachCurrentSession, onAttachChangedFiles, onCreateBranch, onMoveTask, onDragStart, onDragEnd }) => {
   const previousStatus = getAdjacentKanbanStatus(board, task.status, 'previous');
   const nextStatus = getAdjacentKanbanStatus(board, task.status, 'next');
   const hasCurrentSession = Boolean(currentSessionId && task.sessionIds.includes(currentSessionId));
 
   return (
-    <article className="rounded-lg border border-border/60 bg-background/80 p-3 shadow-sm">
+    <article
+      className={cn(
+        'rounded-lg border border-border/60 bg-background/80 p-3 shadow-sm transition-opacity',
+        isPending ? 'opacity-60' : 'cursor-grab active:cursor-grabbing',
+      )}
+      draggable={!isPending}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', task.id);
+        onDragStart?.(task.id);
+      }}
+      onDragEnd={onDragEnd}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h4 className="break-words typography-ui-label font-medium text-foreground">{task.title}</h4>
@@ -61,22 +76,22 @@ export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onE
         <div className="mt-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             {onEditTask ? (
-              <Button size="xs" variant="ghost" onClick={() => onEditTask(task)}>
+              <Button size="xs" variant="ghost" disabled={isPending} onClick={() => onEditTask(task)}>
                 Edit
               </Button>
             ) : null}
             {onAttachCurrentSession ? (
-              <Button size="xs" variant="ghost" disabled={hasCurrentSession} onClick={() => onAttachCurrentSession(task)}>
+              <Button size="xs" variant="ghost" disabled={isPending || hasCurrentSession} onClick={() => onAttachCurrentSession(task)}>
                 {hasCurrentSession ? 'Session attached' : 'Attach session'}
               </Button>
             ) : null}
             {onAttachChangedFiles ? (
-              <Button size="xs" variant="ghost" onClick={() => onAttachChangedFiles(task)}>
+              <Button size="xs" variant="ghost" disabled={isPending} onClick={() => onAttachChangedFiles(task)}>
                 Attach changes
               </Button>
             ) : null}
             {onCreateBranch ? (
-              <Button size="xs" variant="ghost" disabled={Boolean(task.branch)} onClick={() => onCreateBranch(task)}>
+              <Button size="xs" variant="ghost" disabled={isPending || Boolean(task.branch)} onClick={() => onCreateBranch(task)}>
                 {task.branch ? 'Branched' : 'Create branch'}
               </Button>
             ) : null}
@@ -84,14 +99,14 @@ export const KanbanTaskCard: React.FC<KanbanTaskCardProps> = ({ board, task, onE
           {onMoveTask ? (
             <div className="flex items-center gap-1.5">
               {task.status !== 'blocked' ? (
-                <Button size="xs" variant="ghost" onClick={() => onMoveTask(task.id, 'blocked')}>
+                <Button size="xs" variant="ghost" disabled={isPending} onClick={() => onMoveTask(task.id, 'blocked')}>
                   Block
                 </Button>
               ) : null}
-              <Button size="xs" variant="ghost" disabled={!previousStatus} onClick={() => previousStatus && onMoveTask(task.id, previousStatus)}>
+              <Button size="xs" variant="ghost" disabled={isPending || !previousStatus} onClick={() => previousStatus && onMoveTask(task.id, previousStatus)}>
                 ← Move
               </Button>
-              <Button size="xs" variant="ghost" disabled={!nextStatus} onClick={() => nextStatus && onMoveTask(task.id, nextStatus)}>
+              <Button size="xs" variant="ghost" disabled={isPending || !nextStatus} onClick={() => nextStatus && onMoveTask(task.id, nextStatus)}>
                 Move →
               </Button>
             </div>
