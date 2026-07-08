@@ -4,9 +4,14 @@ import path from 'node:path';
 
 const env = { ...process.env };
 
-if (process.platform === 'win32' && !env.CSC_LINK && !env.WINDOWS_CSC_LINK) {
+if (!env.CSC_LINK && !env.WINDOWS_CSC_LINK && !env.CSC_NAME) {
   env.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
-  console.log('[electron] Windows code signing disabled; building unsigned installer.');
+  if (process.platform === 'darwin') {
+    env.NOTARIZE = env.NOTARIZE || 'false';
+    console.log('[electron] macOS code signing/notarization disabled for local packaging.');
+  } else if (process.platform === 'win32') {
+    console.log('[electron] Windows code signing disabled; building unsigned installer.');
+  }
 }
 
 const bunBinaryCandidates = [

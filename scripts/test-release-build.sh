@@ -14,16 +14,16 @@
 #   ./scripts/test-release-build.sh [target] [options]
 #
 # Targets:
-#   aarch64  - Build for Apple Silicon (arm64)
-#   x86_64   - Build for Intel Mac (x86_64)
-#   all      - Build for both architectures (default)
+#   aarch64  - Build Electron for Apple Silicon (arm64)
+#   x86_64   - Build Electron for Intel Mac (x64)
+#   all      - Build both macOS architectures (default)
 #
 # Options:
 #   --act            Force using act (Linux containers - limited macOS support)
 #   --native         Force native build (default, recommended for macOS)
 #   --dry-run        Show what would be run without executing
 #   --verbose, -v    Enable verbose output
-#   --no-bundle      Skip bundle creation (faster, just verify compilation)
+#   --no-bundle      Skip Electron packaging (faster, verify compile/staging/rebuild)
 #
 # Examples:
 #   ./scripts/test-release-build.sh x86_64         # Test Intel Mac build natively
@@ -79,14 +79,14 @@ usage() {
     echo "Usage: $0 [target] [options]"
     echo ""
     echo "Targets:"
-    echo "  aarch64, arm64, arm    Build for Apple Silicon"
-    echo "  x86_64, intel, x86     Build for Intel Mac"
-    echo "  all, both              Build for both architectures (default)"
+    echo "  aarch64, arm64, arm    Build Electron for Apple Silicon"
+    echo "  x86_64, intel, x86     Build Electron for Intel Mac"
+    echo "  all, both              Build both macOS architectures (default)"
     echo ""
     echo "Options:"
     echo "  --act              Run via act (GitHub Actions in Docker - limited macOS)"
     echo "  --native           Run build commands directly (default, recommended)"
-    echo "  --no-bundle        Skip bundle creation (faster compilation check)"
+    echo "  --no-bundle        Skip Electron packaging; verify compile/staging/rebuild only"
     echo "  --dry-run          Show what would be run without executing"
     echo "  --verbose, -v      Enable verbose output"
     echo "  --help, -h         Show this help message"
@@ -136,6 +136,17 @@ run_with_act() {
     eval "$ACT_CMD"
 }
 
+electron_arch_for_target() {
+    case "$1" in
+        aarch64-apple-darwin) echo "arm64" ;;
+        x86_64-apple-darwin) echo "x64" ;;
+        *)
+            log_error "Unsupported native Electron target: $1"
+            exit 1
+            ;;
+    esac
+}
+
 # Run build directly (native mode)
 run_native_build() {
     log_step "Checking prerequisites"
@@ -149,33 +160,23 @@ run_native_build() {
     }
 
     check_command bun
-    check_command rustc
-    check_command cargo
-
-    # Check Rust targets
-    log_info "Checking Rust targets..."
-    for target in "${TARGETS[@]}"; do
-        if ! rustup target list --installed | grep -q "$target"; then
-            log_warn "Rust target $target not installed. Installing..."
-            if [[ "$DRY_RUN" == false ]]; then
-                rustup target add "$target"
-            fi
-            log_success "Installed $target"
-        else
-            log_success "Rust target $target is installed"
-        fi
-    done
+    check_command node
 
     if [[ "$DRY_RUN" == true ]]; then
         log_step "Commands that would be executed (dry run)"
         echo "  1. bun install --frozen-lockfile"
         echo "  2. bun run --cwd packages/ui build"
+        echo "  3. bun run --cwd packages/electron build:web-assets"
+        echo "  4. bun run --cwd packages/electron prepare:opencode-cli"
+        echo "  5. bun run --cwd packages/electron bundle:main"
         for target in "${TARGETS[@]}"; do
-            echo "  3. bun run --cwd packages/desktop build"
+            local arch
+            arch=$(electron_arch_for_target "$target")
+            echo "  6. ELECTRON_BUILDER_ARCH=$arch bun run --cwd packages/electron rebuild:native"
             if [[ "$NO_BUNDLE" == true ]]; then
-                echo "  4. bun run --cwd packages/desktop tauri build --target $target --no-bundle"
+                echo "  7. Skipping Electron packaging for $target (--no-bundle)"
             else
-                echo "  4. bun run --cwd packages/desktop tauri build --target $target"
+                echo "  7. ELECTRON_BUILDER_ARCH=$arch bun run --cwd packages/electron package -- --mac --$arch"
             fi
         done
         return
@@ -189,55 +190,54 @@ run_native_build() {
     log_step "Building UI package"
     bun run --cwd packages/ui build
 
-    # Step 3: Build Desktop for each target
+    # Step 3: Stage shared Electron package inputs once.
+    log_step "Preparing Electron package inputs"
+    bun run --cwd packages/electron build:web-assets
+    bun run --cwd packages/electron prepare:opencode-cli
+    bun run --cwd packages/electron bundle:main
+
+    # Step 4: Build Electron for each target architecture.
     for target in "${TARGETS[@]}"; do
-        log_step "Building Desktop for $target"
+        local arch
+        arch=$(electron_arch_for_target "$target")
+        log_step "Building Electron for $target ($arch)"
 
-        # Build the frontend
-        log_info "Building desktop frontend..."
-        bun run --cwd packages/desktop build
+        log_info "Rebuilding native modules for $arch..."
+        ELECTRON_BUILDER_ARCH="$arch" bun run --cwd packages/electron rebuild:native
 
-        # Build Tauri for the target
-        log_info "Building Tauri for $target (this may take a while)..."
-        
-        local TAURI_ARGS="--target $target"
         if [[ "$NO_BUNDLE" == true ]]; then
-            TAURI_ARGS+=" --no-bundle"
+            log_success "Skipped Electron packaging for $target (--no-bundle)"
+            continue
         fi
 
-        if [[ "$VERBOSE" == true ]]; then
-            TAURI_ARGS+=" --verbose"
-        fi
-
-        bun run --cwd packages/desktop tauri build $TAURI_ARGS
-
-        log_success "Successfully built for $target"
+        log_info "Packaging Electron app for $arch (this may take a while)..."
+        ELECTRON_BUILDER_ARCH="$arch" bun run --cwd packages/electron package -- --mac --"$arch"
+        log_success "Successfully packaged Electron app for $target"
     done
 
-    # Step 4: Show results
+    # Step 5: Show results
     log_step "Build Summary"
 
     for target in "${TARGETS[@]}"; do
-        if [[ "$NO_BUNDLE" == true ]]; then
-            local BINARY_PATH="packages/desktop/src-tauri/target/$target/release/openchamber-desktop"
-        else
-            local BINARY_PATH="packages/desktop/src-tauri/target/$target/release/bundle/dmg"
-        fi
+        local arch
+        arch=$(electron_arch_for_target "$target")
+        local OUTPUT_DIR="packages/electron/dist"
+        local artifacts
+        artifacts=$(find "$OUTPUT_DIR" -maxdepth 1 \( -name "*mac*$arch*.dmg" -o -name "*mac*$arch*.zip" -o -name "*mac*$arch*.blockmap" \) 2>/dev/null | sort || true)
 
-        if [[ -e "$BINARY_PATH" ]]; then
-            if [[ -d "$BINARY_PATH" ]]; then
-                log_success "$target: Bundle created at $BINARY_PATH"
-                ls -la "$BINARY_PATH"/*.dmg 2>/dev/null || true
-            else
+        if [[ "$NO_BUNDLE" == true ]]; then
+            log_success "$target: compile/staging/native rebuild completed (--no-bundle)"
+        elif [[ -n "$artifacts" ]]; then
+            log_success "$target: Electron artifacts created in $OUTPUT_DIR"
+            echo "$artifacts" | while IFS= read -r artifact; do
                 local SIZE
-                SIZE=$(du -h "$BINARY_PATH" | cut -f1)
-                log_success "$target: Binary built successfully ($SIZE)"
-                file "$BINARY_PATH" 2>/dev/null || true
-            fi
+                SIZE=$(du -h "$artifact" | cut -f1)
+                echo "  - $artifact ($SIZE)"
+            done
         else
-            log_warn "$target: Output not found at expected path"
-            log_info "Checking target directory..."
-            ls -la "packages/desktop/src-tauri/target/$target/release/" 2>/dev/null | head -10 || true
+            log_warn "$target: Output not found in $OUTPUT_DIR"
+            log_info "Checking Electron dist directory..."
+            ls -la "$OUTPUT_DIR" 2>/dev/null | head -20 || true
         fi
     done
 }
