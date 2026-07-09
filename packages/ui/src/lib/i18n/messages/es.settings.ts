@@ -439,6 +439,7 @@ export const settingsDict = {
   "settings.behavior.page.responseStyle.option.noFiller": "Sin relleno",
   "settings.behavior.page.responseStyle.option.matchEnergy": "Igualar mi tono",
   "settings.behavior.page.responseStyle.option.warmPeer": "Colega cercano",
+  "settings.behavior.page.responseStyle.option.visual": "Texto + visual",
   "settings.behavior.page.responseStyle.option.custom": "Personalizado",
   "settings.behavior.page.responseStyle.customPlaceholder": "Escribe la instrucción que se agregará al primer mensaje...",
   "settings.behavior.page.toast.saved": "Comportamiento guardado correctamente",

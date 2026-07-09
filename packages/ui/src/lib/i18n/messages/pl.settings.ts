@@ -102,6 +102,7 @@ export const settingsDict = {
   'settings.behavior.page.responseStyle.option.noFiller': 'Bez zbędnych treści',
   'settings.behavior.page.responseStyle.option.pushback': 'Krytyczne podejście',
   'settings.behavior.page.responseStyle.option.warmPeer': 'Przyjazny kolega',
+  'settings.behavior.page.responseStyle.option.visual': 'Tekst + wizualnie',
   'settings.behavior.page.responseStyle.preset': 'Preset',
   'settings.behavior.page.responseStyle.tooltip': 'Jeśli jest włączone, instrukcje te określają sposób odpowiadania asystenta w każdej nowej rozmowie. Są one przesyłane z Twoją pierwszą wiadomością i nie zmieniają Twoich globalnych reguł AGENTS.md.',
   'settings.behavior.page.section.responseStyle': 'Styl odpowiedzi',

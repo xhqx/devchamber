@@ -439,6 +439,7 @@ export const settingsDict = {
   "settings.behavior.page.responseStyle.option.noFiller": "Sem enrolação",
   "settings.behavior.page.responseStyle.option.matchEnergy": "Acompanhar meu tom",
   "settings.behavior.page.responseStyle.option.warmPeer": "Colega próximo",
+  "settings.behavior.page.responseStyle.option.visual": "Texto + visual",
   "settings.behavior.page.responseStyle.option.custom": "Personalizado",
   "settings.behavior.page.responseStyle.customPlaceholder": "Escreva a instrução para adicionar à primeira mensagem...",
   "settings.behavior.page.toast.saved": "Comportamento salvo com sucesso",

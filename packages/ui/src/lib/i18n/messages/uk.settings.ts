@@ -439,6 +439,7 @@ export const settingsDict = {
   "settings.behavior.page.responseStyle.option.noFiller": "Без води",
   "settings.behavior.page.responseStyle.option.matchEnergy": "У тон мені",
   "settings.behavior.page.responseStyle.option.warmPeer": "Близький колега",
+  "settings.behavior.page.responseStyle.option.visual": "Текст + візуально",
   "settings.behavior.page.responseStyle.option.custom": "Власний",
   "settings.behavior.page.responseStyle.customPlaceholder": "Напишіть інструкцію, яку треба додати до першого повідомлення...",
   "settings.behavior.page.toast.saved": "Поведінку збережено",

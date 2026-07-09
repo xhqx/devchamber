@@ -439,6 +439,7 @@ export const settingsDict = {
   'settings.behavior.page.responseStyle.option.noFiller': '군더더기 없이',
   'settings.behavior.page.responseStyle.option.matchEnergy': '내 톤에 맞추기',
   'settings.behavior.page.responseStyle.option.warmPeer': '친근한 동료',
+  'settings.behavior.page.responseStyle.option.visual': '텍스트 + 비주얼',
   'settings.behavior.page.responseStyle.option.custom': '사용자 정의',
   'settings.behavior.page.responseStyle.customPlaceholder': '첫 메시지에 추가할 지침을 작성하세요...',
   'settings.behavior.page.toast.saved': '동작이 성공적으로 저장되었습니다',

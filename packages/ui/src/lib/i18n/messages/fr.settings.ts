@@ -422,6 +422,7 @@ export const settingsDict = {
   'settings.behavior.page.responseStyle.option.noFiller': 'Pas de remplissage',
   'settings.behavior.page.responseStyle.option.matchEnergy': 'Correspond à mon énergie',
   'settings.behavior.page.responseStyle.option.warmPeer': 'Pair chaleureux',
+  'settings.behavior.page.responseStyle.option.visual': 'Texte + visuel',
   'settings.behavior.page.responseStyle.option.custom': 'Personnalisé',
   'settings.behavior.page.responseStyle.customPlaceholder': 'Écrivez l\'instruction à ajouter au premier message...',
   'settings.behavior.page.toast.saved': 'Comportement enregistré avec succès',

@@ -436,6 +436,7 @@
   'settings.behavior.page.responseStyle.option.noFiller': '無廢話',
   'settings.behavior.page.responseStyle.option.matchEnergy': '配合我的語氣',
   'settings.behavior.page.responseStyle.option.warmPeer': '親近的同事',
+  'settings.behavior.page.responseStyle.option.visual': '文字 + 視覺',
   'settings.behavior.page.responseStyle.option.custom': '自訂',
   'settings.behavior.page.responseStyle.customPlaceholder': '編寫要新增到第一則訊息的說明...',
   'settings.behavior.page.toast.saved': '行為儲存成功',

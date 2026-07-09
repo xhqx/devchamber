@@ -176,7 +176,7 @@ export type DesktopSettings = {
   // Global behavior prompt — synced to ~/.config/opencode/AGENTS.md
   globalBehaviorPrompt?: string;
   responseStyleEnabled?: boolean;
-  responseStylePreset?: 'concise' | 'detailed' | 'mentor' | 'pushback' | 'noFiller' | 'matchEnergy' | 'warmPeer' | 'custom';
+  responseStylePreset?: 'concise' | 'detailed' | 'mentor' | 'pushback' | 'noFiller' | 'matchEnergy' | 'warmPeer' | 'visual' | 'custom';
   responseStyleCustomInstructions?: string;
   dictationEnabled?: boolean;
   sttProvider?: 'local' | 'openai-compatible';

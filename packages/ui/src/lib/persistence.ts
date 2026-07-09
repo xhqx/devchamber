@@ -1187,6 +1187,7 @@ const sanitizeWebSettings = (payload: unknown): DesktopSettings | null => {
       || candidate.responseStylePreset === 'noFiller'
       || candidate.responseStylePreset === 'matchEnergy'
       || candidate.responseStylePreset === 'warmPeer'
+      || candidate.responseStylePreset === 'visual'
       || candidate.responseStylePreset === 'custom')
   ) {
     result.responseStylePreset = candidate.responseStylePreset;

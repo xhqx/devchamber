@@ -472,6 +472,7 @@ export const settingsDict = {
   'settings.behavior.page.responseStyle.option.noFiller': '無駄なし',
   'settings.behavior.page.responseStyle.option.matchEnergy': 'テンションに合わせる',
   'settings.behavior.page.responseStyle.option.warmPeer': '親しみやすい同僚',
+  'settings.behavior.page.responseStyle.option.visual': 'テキスト + ビジュアル',
   'settings.behavior.page.responseStyle.option.custom': 'カスタム',
   'settings.behavior.page.responseStyle.customPlaceholder': '最初のメッセージに追加する指示を記述...',
   'settings.behavior.page.toast.saved': '動作設定を保存しました',

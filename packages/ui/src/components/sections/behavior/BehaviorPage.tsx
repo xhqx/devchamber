@@ -67,6 +67,7 @@ const RESPONSE_STYLE_OPTION_LABEL_KEYS: Record<ResponseStylePreset, I18nKey> = {
   noFiller: 'settings.behavior.page.responseStyle.option.noFiller',
   matchEnergy: 'settings.behavior.page.responseStyle.option.matchEnergy',
   warmPeer: 'settings.behavior.page.responseStyle.option.warmPeer',
+  visual: 'settings.behavior.page.responseStyle.option.visual',
 };
 
 const saveBehaviorSetting = async (settings: Partial<DesktopSettings>, fallbackError: string) => {

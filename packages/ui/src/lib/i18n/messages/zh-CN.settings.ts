@@ -439,6 +439,7 @@ export const settingsDict = {
   'settings.behavior.page.responseStyle.option.noFiller': '无废话',
   'settings.behavior.page.responseStyle.option.matchEnergy': '匹配我的语气',
   'settings.behavior.page.responseStyle.option.warmPeer': '亲近的同事',
+  'settings.behavior.page.responseStyle.option.visual': '文本 + 视觉',
   'settings.behavior.page.responseStyle.option.custom': '自定义',
   'settings.behavior.page.responseStyle.customPlaceholder': '编写要添加到第一条消息的说明...',
   'settings.behavior.page.toast.saved': '行为保存成功',
