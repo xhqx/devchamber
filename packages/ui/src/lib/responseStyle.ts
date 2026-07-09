@@ -2,9 +2,21 @@ import { runtimeFetch } from './runtime-fetch';
 
 export const RESPONSE_STYLE_PRESETS = ['concise', 'detailed', 'mentor', 'pushback', 'noFiller', 'matchEnergy', 'warmPeer', 'visual'] as const;
 export type ResponseStylePreset = typeof RESPONSE_STYLE_PRESETS[number];
+export type ResponseStylePresetValue = ResponseStylePreset | 'custom';
+
+export type ResponseStyleSettings = {
+  enabled: boolean;
+  preset: ResponseStylePresetValue | null;
+  customInstructions: string;
+  instruction: string | null;
+};
 
 export const isResponseStylePreset = (value: unknown): value is ResponseStylePreset => (
   typeof value === 'string' && RESPONSE_STYLE_PRESETS.includes(value as ResponseStylePreset)
+);
+
+export const isResponseStylePresetValue = (value: unknown): value is ResponseStylePresetValue => (
+  value === 'custom' || isResponseStylePreset(value)
 );
 
 export const getResponseStylePresetInstructions = (preset: ResponseStylePreset): string => {
@@ -28,7 +40,7 @@ export const getResponseStylePresetInstructions = (preset: ResponseStylePreset):
   }
 };
 
-const buildResponseStyleInstruction = ({
+export const buildResponseStyleInstruction = ({
   enabled,
   preset,
   customInstructions,
@@ -46,7 +58,30 @@ const buildResponseStyleInstruction = ({
   return getResponseStylePresetInstructions(preset);
 };
 
-export const fetchResponseStyleInstruction = async (): Promise<string | null> => {
+export const buildResponseStyleSettings = (settings: {
+  responseStyleEnabled?: unknown;
+  responseStylePreset?: unknown;
+  responseStyleCustomInstructions?: unknown;
+} | null): ResponseStyleSettings | null => {
+  if (!settings) return null;
+  const enabled = settings.responseStyleEnabled === true;
+  const preset = isResponseStylePresetValue(settings.responseStylePreset) ? settings.responseStylePreset : null;
+  const customInstructions = typeof settings.responseStyleCustomInstructions === 'string'
+    ? settings.responseStyleCustomInstructions
+    : '';
+  return {
+    enabled,
+    preset,
+    customInstructions,
+    instruction: buildResponseStyleInstruction({
+      enabled,
+      preset,
+      customInstructions,
+    }),
+  };
+};
+
+export const fetchResponseStyleSettings = async (): Promise<ResponseStyleSettings | null> => {
   const response = await runtimeFetch('/api/config/settings', {
     method: 'GET',
     headers: { Accept: 'application/json' },
@@ -57,10 +92,10 @@ export const fetchResponseStyleInstruction = async (): Promise<string | null> =>
     responseStylePreset?: unknown;
     responseStyleCustomInstructions?: unknown;
   } | null;
-  if (!settings) return null;
-  return buildResponseStyleInstruction({
-    enabled: settings.responseStyleEnabled === true,
-    preset: settings.responseStylePreset,
-    customInstructions: settings.responseStyleCustomInstructions,
-  });
+  return buildResponseStyleSettings(settings);
+};
+
+export const fetchResponseStyleInstruction = async (): Promise<string | null> => {
+  const settings = await fetchResponseStyleSettings();
+  return settings?.instruction ?? null;
 };

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  buildResponseStyleSettings,
   getResponseStylePresetInstructions,
   isResponseStylePreset,
   RESPONSE_STYLE_PRESETS,
@@ -18,5 +19,16 @@ describe('response style presets', () => {
     expect(instruction).toContain('visual-first markdown');
     expect(instruction).toContain('Mermaid diagrams');
     expect(instruction).toContain('Avoid long paragraphs');
+  });
+
+  test('visual mode settings build a reusable instruction for the chat toggle', () => {
+    const settings = buildResponseStyleSettings({
+      responseStyleEnabled: true,
+      responseStylePreset: 'visual',
+    });
+
+    expect(settings?.enabled).toBe(true);
+    expect(settings?.preset).toBe('visual');
+    expect(settings?.instruction).toContain('visual-first markdown');
   });
 });

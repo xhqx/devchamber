@@ -79,7 +79,7 @@ import { usePermissionStore } from '@/stores/permissionStore';
 import { extractGitChangedFiles } from './changedFiles';
 import { useI18n } from '@/lib/i18n';
 import { sessionEvents } from '@/lib/sessionEvents';
-import { fetchResponseStyleInstruction } from '@/lib/responseStyle';
+import { fetchResponseStyleSettings } from '@/lib/responseStyle';
 import { wrapSystemReminder } from '@/lib/systemReminder';
 import { getSyncMessages } from '@/sync/sync-refs';
 import { EMPTY_REVERTED_MESSAGE_DOCK_STATE, buildRevertedMessageDockState, type RevertedMessageDockState } from './revertedMessageDockState';
@@ -2353,15 +2353,17 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         const currentSessionDirectory = currentSessionId
             ? useSessionUIStore.getState().getDirectoryForSession(currentSessionId) || currentDirectory
             : currentDirectory;
-        const shouldAddResponseStyle = newSessionDraftOpen || (currentSessionId ? !hasUserMessages(currentSessionId, currentSessionDirectory) : false);
-        if (shouldAddResponseStyle) {
-            const responseStyleInstruction = await fetchResponseStyleInstruction().catch(() => null);
-            if (responseStyleInstruction) {
-                additionalParts.push({
-                    text: wrapSystemReminder(responseStyleInstruction),
-                    synthetic: true,
-                });
-            }
+        const isFirstUserMessage = newSessionDraftOpen || (currentSessionId ? !hasUserMessages(currentSessionId, currentSessionDirectory) : false);
+        const responseStyleSettings = await fetchResponseStyleSettings().catch(() => null);
+        const shouldAddResponseStyle = responseStyleSettings?.preset === 'visual'
+            ? responseStyleSettings.enabled
+            : isFirstUserMessage;
+        const responseStyleInstruction = shouldAddResponseStyle ? responseStyleSettings?.instruction : null;
+        if (responseStyleInstruction) {
+            additionalParts.push({
+                text: wrapSystemReminder(responseStyleInstruction),
+                synthetic: true,
+            });
         }
 
         try {
