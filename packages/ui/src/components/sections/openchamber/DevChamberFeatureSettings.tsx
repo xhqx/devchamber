@@ -128,16 +128,6 @@ export const DevChamberFeatureSettings: React.FC = () => {
         />
 
         <ToggleRow
-          checked={settingsForkFeatures.autocomplete.enabled}
-          label="Commit autocomplete"
-          description="Suggest commit text while composing Git messages."
-          onChange={(checked) => updateFeatures((current) => ({
-            ...current,
-            autocomplete: { ...current.autocomplete, enabled: checked },
-          }))}
-        />
-
-        <ToggleRow
           checked={settingsForkFeatures.repoIndex.enabled}
           label="Repository index"
           description="Allow DevChamber to use repo indexing features when available."
