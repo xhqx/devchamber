@@ -5,6 +5,7 @@ import { SessionEditorPanelProvider } from './SessionEditorPanelProvider';
 import { createOpenCodeManager, type OpenCodeManager } from './opencode';
 import { startGlobalEventWatcher, stopGlobalEventWatcher, setChatViewProvider } from './sessionActivityWatcher';
 import { resolveWorkspaceFolders } from './workspaceResolver';
+import { registerCodeAutocompleteProvider } from './codeAutocomplete';
 
 let chatViewProvider: ChatViewProvider | undefined;
 let agentManagerProvider: AgentManagerPanelProvider | undefined;
@@ -123,6 +124,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Create OpenCode manager first
   openCodeManager = createOpenCodeManager(context);
+  registerCodeAutocompleteProvider(context);
 
   // Create chat view provider with manager reference
   // The webview will show a loading state until OpenCode is ready
