@@ -374,7 +374,7 @@ const loadSnippetRegistry = (workingDirectory?: string): Map<string, Snippet> =>
         const snippet = loadSnippetFile(dir, filename, source);
         if (snippet) registerSnippet(registry, snippet);
       } catch (error) {
-        console.warn(`[OpenChamber][VSCode] Failed to load snippet ${path.join(dir, filename)}:`, error);
+        console.warn(`[DevChamber][VSCode] Failed to load snippet ${path.join(dir, filename)}:`, error);
       }
     }
   }
@@ -695,7 +695,7 @@ const getConfigForPath = (layers: ReturnType<typeof readConfigLayers>, targetPat
 
 const writeConfig = (config: Record<string, unknown>, filePath: string = CONFIG_FILE) => {
   if (fs.existsSync(filePath)) {
-    const backupFile = `${filePath}.openchamber.backup`;
+    const backupFile = `${filePath}.devchamber.backup`;
     try {
       fs.copyFileSync(filePath, backupFile);
     } catch {
@@ -1519,7 +1519,7 @@ const parseMdFile = (filePath: string): { frontmatter: Record<string, unknown>; 
   try {
     frontmatter = (yaml.parse(match[1]) || {}) as Record<string, unknown>;
   } catch (error) {
-    console.warn(`[OpenChamber][VSCode] Failed to parse frontmatter for ${filePath}, treating as empty:`, error);
+    console.warn(`[DevChamber][VSCode] Failed to parse frontmatter for ${filePath}, treating as empty:`, error);
     frontmatter = {};
   }
   return { frontmatter, body: (match[2] || '').trim() };

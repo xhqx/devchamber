@@ -1,13 +1,13 @@
 {
-  "name": "openchamber",
-  "displayName": "OpenChamber",
+  "name": "devchamber",
+  "displayName": "DevChamber",
   "description": "%extension.description%",
   "version": "1.14.0",
-  "publisher": "fedaykindev",
+  "publisher": "xhqx",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/btriapitsyn/openchamber.git"
+    "url": "https://github.com/xhqx/devchamber.git"
   },
   "qna": "https://discord.gg/ZYRSdnwwKA",
   "license": "MIT",
@@ -29,39 +29,39 @@
     "groq",
     "assistant",
     "opencode",
-    "openchamber"
+    "devchamber"
   ],
   "icon": "assets/app-icon.png",
   "main": "./dist/extension.js",
   "l10n": "./l10n",
   "activationEvents": [
-    "onCommand:openchamber.openSidebar",
-    "onCommand:openchamber.attachExplorerToChat",
-    "onView:openchamber.chatView"
+    "onCommand:devchamber.openSidebar",
+    "onCommand:devchamber.attachExplorerToChat",
+    "onView:devchamber.chatView"
   ],
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "openchamber",
-          "title": "OpenChamber",
+          "id": "devchamber",
+          "title": "DevChamber",
           "icon": "assets/icon.svg"
         }
       ]
     },
     "views": {
-      "openchamber": [
+      "devchamber": [
         {
           "type": "webview",
-          "id": "openchamber.chatView",
+          "id": "devchamber.chatView",
           "name": "%views.chat.name%"
         }
       ]
     },
     "commands": [
       {
-        "command": "openchamber.openSidebar",
-        "category": "OpenChamber",
+        "command": "devchamber.openSidebar",
+        "category": "DevChamber",
         "title": "%command.openSidebar.title%",
         "icon": {
           "light": "assets/icon.svg",
@@ -69,35 +69,35 @@
         }
       },
       {
-        "command": "openchamber.focusChat",
-        "category": "OpenChamber",
+        "command": "devchamber.focusChat",
+        "category": "DevChamber",
         "title": "%command.focusChat.title%"
       },
       {
-        "command": "openchamber.restartApi",
-        "category": "OpenChamber",
+        "command": "devchamber.restartApi",
+        "category": "DevChamber",
         "title": "%command.restartApi.title%"
       },
       {
-        "command": "openchamber.showOpenCodeStatus",
-        "category": "OpenChamber",
+        "command": "devchamber.showOpenCodeStatus",
+        "category": "DevChamber",
         "title": "%command.showOpenCodeStatus.title%"
       },
       {
-        "command": "openchamber.openAgentManager",
-        "category": "OpenChamber",
+        "command": "devchamber.openAgentManager",
+        "category": "DevChamber",
         "title": "%command.openAgentManager.title%",
         "icon": "$(circuit-board)"
       },
       {
-        "command": "openchamber.openActiveSessionInEditor",
-        "category": "OpenChamber",
+        "command": "devchamber.openActiveSessionInEditor",
+        "category": "DevChamber",
         "title": "%command.openActiveSessionInEditor.title%",
         "icon": "$(link-external)"
       },
       {
-        "command": "openchamber.openNewSessionInEditor",
-        "category": "OpenChamber",
+        "command": "devchamber.openNewSessionInEditor",
+        "category": "DevChamber",
         "title": "%command.openNewSessionInEditor.title%",
         "icon": {
           "light": "assets/icon.svg",
@@ -105,130 +105,130 @@
         }
       },
       {
-        "command": "openchamber.openCurrentOrNewSessionInEditor",
-        "category": "OpenChamber",
+        "command": "devchamber.openCurrentOrNewSessionInEditor",
+        "category": "DevChamber",
         "title": "%command.openCurrentOrNewSessionInEditor.title%",
         "icon": "$(link-external)"
       },
       {
-        "command": "openchamber.addToContext",
-        "category": "OpenChamber",
+        "command": "devchamber.addToContext",
+        "category": "DevChamber",
         "title": "%command.addToContext.title%"
       },
       {
-        "command": "openchamber.explain",
-        "category": "OpenChamber",
+        "command": "devchamber.explain",
+        "category": "DevChamber",
         "title": "%command.explain.title%"
       },
       {
-        "command": "openchamber.improveCode",
-        "category": "OpenChamber",
+        "command": "devchamber.improveCode",
+        "category": "DevChamber",
         "title": "%command.improveCode.title%"
       },
       {
-        "command": "openchamber.newSession",
-        "category": "OpenChamber",
+        "command": "devchamber.newSession",
+        "category": "DevChamber",
         "title": "%command.newSession.title%",
         "icon": "$(add)"
       },
       {
-        "command": "openchamber.showSettings",
-        "category": "OpenChamber",
+        "command": "devchamber.showSettings",
+        "category": "DevChamber",
         "title": "%command.showSettings.title%",
         "icon": "$(settings-gear)"
       },
       {
-        "command": "openchamber.attachExplorerToChat",
-        "category": "OpenChamber",
+        "command": "devchamber.attachExplorerToChat",
+        "category": "DevChamber",
         "title": "%command.attachExplorerToChat.title%"
       }
     ],
     "submenus": [
       {
-        "id": "openchamber.submenu",
-        "label": "OpenChamber"
+        "id": "devchamber.submenu",
+        "label": "DevChamber"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "submenu": "openchamber.submenu",
+          "submenu": "devchamber.submenu",
           "group": "navigation"
         }
       ],
       "explorer/context": [
         {
-          "command": "openchamber.attachExplorerToChat",
+          "command": "devchamber.attachExplorerToChat",
           "when": "resourceScheme == file && explorerResourceIsFolder == false",
           "group": "navigation@50"
         }
       ],
       "editor/title": [
         {
-          "command": "openchamber.openNewSessionInEditor",
+          "command": "devchamber.openNewSessionInEditor",
           "group": "navigation@1"
         }
       ],
       "view/title": [
         {
-          "command": "openchamber.newSession",
-          "when": "view == openchamber.chatView",
+          "command": "devchamber.newSession",
+          "when": "view == devchamber.chatView",
           "group": "navigation@1"
         },
         {
-          "command": "openchamber.openCurrentOrNewSessionInEditor",
-          "when": "view == openchamber.chatView",
+          "command": "devchamber.openCurrentOrNewSessionInEditor",
+          "when": "view == devchamber.chatView",
           "group": "navigation@2"
         },
         {
-          "command": "openchamber.openAgentManager",
-          "when": "view == openchamber.chatView",
+          "command": "devchamber.openAgentManager",
+          "when": "view == devchamber.chatView",
           "group": "navigation@3"
         },
         {
-          "command": "openchamber.showSettings",
-          "when": "view == openchamber.chatView",
+          "command": "devchamber.showSettings",
+          "when": "view == devchamber.chatView",
           "group": "navigation@4"
         }
       ],
-      "openchamber.submenu": [
+      "devchamber.submenu": [
         {
-          "command": "openchamber.explain"
+          "command": "devchamber.explain"
         },
         {
-          "command": "openchamber.improveCode"
+          "command": "devchamber.improveCode"
         },
         {
-          "command": "openchamber.addToContext"
+          "command": "devchamber.addToContext"
         }
       ]
     },
     "configuration": {
-      "title": "OpenChamber",
+      "title": "DevChamber",
       "properties": {
-        "openchamber.apiUrl": {
+        "devchamber.apiUrl": {
           "type": "string",
           "default": "",
           "description": "%configuration.apiUrl.description%"
         },
-        "openchamber.opencodeBinary": {
+        "devchamber.opencodeBinary": {
           "type": "string",
           "default": "",
           "description": "%configuration.opencodeBinary.description%"
         },
-        "openchamber.fork.autoApprove.enabled": {
+        "devchamber.fork.autoApprove.enabled": {
           "type": "boolean",
           "default": false,
           "description": "%configuration.fork.autoApprove.enabled.description%"
         },
-        "openchamber.fork.autoApprove.timeoutSeconds": {
+        "devchamber.fork.autoApprove.timeoutSeconds": {
           "type": "number",
           "default": 30,
           "minimum": 5,
           "maximum": 600,
           "description": "%configuration.fork.autoApprove.timeoutSeconds.description%"
         },
-        "openchamber.fork.autoApprove.allowedTools": {
+        "devchamber.fork.autoApprove.allowedTools": {
           "type": "array",
           "default": [],
           "items": {
@@ -236,44 +236,44 @@
           },
           "description": "%configuration.fork.autoApprove.allowedTools.description%"
         },
-        "openchamber.fork.docs.requiredOnCodeChange": {
+        "devchamber.fork.docs.requiredOnCodeChange": {
           "type": "boolean",
           "default": true,
           "description": "%configuration.fork.docs.requiredOnCodeChange.description%"
         },
-        "openchamber.fork.modelFallback.enabled": {
+        "devchamber.fork.modelFallback.enabled": {
           "type": "boolean",
           "default": true,
           "description": "%configuration.fork.modelFallback.enabled.description%"
         },
-        "openchamber.fork.modelFallback.chain": {
+        "devchamber.fork.modelFallback.chain": {
           "type": "array",
           "default": [],
           "description": "%configuration.fork.modelFallback.chain.description%"
         },
-        "openchamber.fork.repoIndex.enabled": {
+        "devchamber.fork.repoIndex.enabled": {
           "type": "boolean",
           "default": true,
           "description": "%configuration.fork.repoIndex.enabled.description%"
         },
-        "openchamber.fork.kanban.enabled": {
+        "devchamber.fork.kanban.enabled": {
           "type": "boolean",
           "default": true,
           "description": "%configuration.fork.kanban.enabled.description%"
         },
-        "openchamber.fork.autocomplete.enabled": {
+        "devchamber.fork.autocomplete.enabled": {
           "type": "boolean",
           "default": true,
           "description": "%configuration.fork.autocomplete.enabled.description%"
         },
-        "openchamber.fork.commitGeneration.maxFiles": {
+        "devchamber.fork.commitGeneration.maxFiles": {
           "type": "number",
           "default": 40,
           "minimum": 1,
           "maximum": 300,
           "description": "%configuration.fork.commitGeneration.maxFiles.description%"
         },
-        "openchamber.fork.commitGeneration.variantsEnabled": {
+        "devchamber.fork.commitGeneration.variantsEnabled": {
           "type": "boolean",
           "default": true,
           "description": "%configuration.fork.commitGeneration.variantsEnabled.description%"
@@ -305,7 +305,7 @@
     "vite": "^7.1.2"
   },
   "dependencies": {
-    "@openchamber/ui": "workspace:*",
+    "@devchamber/ui": "workspace:*",
     "@opencode-ai/sdk": "1.17.12",
     "adm-zip": "^0.5.16",
     "jsonc-parser": "^3.3.1",

@@ -191,7 +191,7 @@ export const VSCodeLayout: React.FC = () => {
       return;
     }
 
-    void vscodeApi.executeCommand('openchamber.setActiveSession', currentSessionId, activeSessionTitle);
+    void vscodeApi.executeCommand('devchamber.setActiveSession', currentSessionId, activeSessionTitle);
   }, [activeSessionTitle, currentSessionId, runtimeApis.vscode]);
 
   React.useEffect(() => {
@@ -204,7 +204,7 @@ export const VSCodeLayout: React.FC = () => {
       return;
     }
 
-    void vscodeApi.executeCommand('openchamber.updateSessionEditorTitle', currentSessionId, activeSessionTitle);
+    void vscodeApi.executeCommand('devchamber.updateSessionEditorTitle', currentSessionId, activeSessionTitle);
   }, [activeSessionTitle, currentSessionId, runtimeApis.vscode, viewMode]);
 
   // If the active session disappears (e.g., deleted), go back to sessions list

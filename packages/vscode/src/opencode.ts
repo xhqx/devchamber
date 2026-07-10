@@ -82,7 +82,7 @@ function isValidOpenCodePassword(password: string): boolean {
   return typeof password === 'string' && password.trim().length > 0;
 }
 
-function readOpenChamberSettings(): Record<string, unknown> {
+function readDevChamberSettings(): Record<string, unknown> {
   const settingsPath = path.join(os.homedir(), '.config', 'openchamber', 'settings.json');
   try {
     const raw = fs.readFileSync(settingsPath, 'utf8');
@@ -242,7 +242,7 @@ function isKnownOpenCodeDesktopAppPath(candidate: string): boolean {
 }
 
 function createConfiguredOpencodeBinaryError(raw: string, normalized: string): Error {
-  const messageSuffix = 'OpenChamber needs the standalone opencode CLI. Install it and set openchamber.opencodeBinary to the CLI path, for example ~/.opencode/bin/opencode, or leave the setting empty to use PATH lookup.';
+  const messageSuffix = 'DevChamber needs the standalone opencode CLI. Install it and set devchamber.opencodeBinary to the CLI path, for example ~/.opencode/bin/opencode, or leave the setting empty to use PATH lookup.';
   if (isKnownOpenCodeDesktopAppPath(raw) || isKnownOpenCodeDesktopAppPath(normalized)) {
     const platformName = process.platform === 'win32' ? 'Windows desktop app install' : 'macOS desktop app bundle';
     return new Error(`Configured OpenCode binary points at the ${platformName}, not the CLI: ${normalized}. ${messageSuffix}`);
@@ -281,7 +281,7 @@ function validateConfiguredOpencodeBinaryForManagedStart(): string | null {
   }
 
   try {
-    const settings = readOpenChamberSettings();
+    const settings = readDevChamberSettings();
     const raw = typeof settings.opencodeBinary === 'string' ? settings.opencodeBinary.trim() : '';
     if (raw) {
       candidates.push(raw);
@@ -321,9 +321,9 @@ function resolveOpencodeCliPath(): string | null {
     return configured;
   }
 
-  const sharedFromOpenChamber = (() => {
+  const sharedFromDevChamber = (() => {
     try {
-      const settings = readOpenChamberSettings();
+      const settings = readDevChamberSettings();
       const candidate = settings.opencodeBinary;
       if (typeof candidate !== 'string') {
         return null;
@@ -334,8 +334,8 @@ function resolveOpencodeCliPath(): string | null {
     }
   })();
 
-  if (sharedFromOpenChamber && isExecutable(sharedFromOpenChamber) && !isKnownOpenCodeDesktopAppPath(sharedFromOpenChamber)) {
-    return sharedFromOpenChamber;
+  if (sharedFromDevChamber && isExecutable(sharedFromDevChamber) && !isKnownOpenCodeDesktopAppPath(sharedFromDevChamber)) {
+    return sharedFromDevChamber;
   }
 
   const explicit = [
@@ -612,7 +612,7 @@ async function waitForReady(
   timeoutMs = 15000,
   authHeaders: Record<string, string> = {}
 ): Promise<ReadyResult> {
-  const outputChannel = vscode.window.createOutputChannel('OpenChamberManager');
+  const outputChannel = vscode.window.createOutputChannel('DevChamberManager');
   const start = Date.now();
   const candidates = getCandidateBaseUrls(serverUrl);
   let attempts = 0;
@@ -710,7 +710,7 @@ async function spawnManagedOpenCodeServer(
     const onExit = (code: number | null) => {
       cleanup();
       const appBundleHint = isMacOpenCodeAppBundlePath(binary)
-        ? ' The configured binary appears to point at the macOS desktop app bundle; OpenChamber needs the standalone opencode CLI.'
+        ? ' The configured binary appears to point at the macOS desktop app bundle; DevChamber needs the standalone opencode CLI.'
         : '';
       reject(new Error(`OpenCode process exited before serving with code ${code}. Binary used: ${binary}.${appBundleHint} Output: ${output}`));
     };
