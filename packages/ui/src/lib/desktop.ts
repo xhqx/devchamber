@@ -1,6 +1,7 @@
 import type { ProjectEntry } from '@/lib/api/types';
 import { getInjectedBootOutcome } from '@/lib/desktopBoot';
 import type { DraftStarterRef } from '@/lib/draftStarters';
+import type { ForkFeatureSettings } from '@/lib/forkFeatures';
 import type { MobileKeyboardMode } from '@/lib/mobileKeyboardMode';
 import { getRuntimeApiBaseUrl, getRuntimeKey } from '@/lib/runtime-switch';
 import { getRegisteredRuntimeAPIs } from '@/contexts/runtimeAPIRegistry';
@@ -178,6 +179,7 @@ export type DesktopSettings = {
   responseStyleEnabled?: boolean;
   responseStylePreset?: 'concise' | 'detailed' | 'mentor' | 'pushback' | 'noFiller' | 'matchEnergy' | 'warmPeer' | 'visual' | 'custom';
   responseStyleCustomInstructions?: string;
+  forkFeatures?: ForkFeatureSettings;
   dictationEnabled?: boolean;
   sttProvider?: 'local' | 'openai-compatible';
   sttServerUrl?: string;

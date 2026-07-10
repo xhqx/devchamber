@@ -12,6 +12,7 @@ import { TunnelSettings } from './TunnelSettings';
 import { OpenCodeCliSettings } from './OpenCodeCliSettings';
 import { DesktopNetworkSettings } from './DesktopNetworkSettings';
 import { KeyboardShortcutsSettings } from './KeyboardShortcutsSettings';
+import { DevChamberFeatureSettings } from './DevChamberFeatureSettings';
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
 import { useDeviceInfo } from '@/lib/device';
 import { isDesktopLocalOriginActive, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
@@ -50,6 +51,9 @@ export const OpenChamberPage: React.FC<OpenChamberPageProps> = ({ section }) => 
             >
                 <div className="openchamber-page-body mx-auto max-w-3xl space-y-3 p-3 sm:space-y-6 sm:p-6 sm:pt-8">
                     <OpenChamberVisualSettings />
+                    <div className="border-t border-border/40 pt-6">
+                        <DevChamberFeatureSettings />
+                    </div>
                     <div className="border-t border-border/40 pt-6">
                         <DefaultsSettings />
                     </div>
@@ -144,7 +148,14 @@ const VisualSectionContent: React.FC = () => {
 
 // Chat section: User message rendering, Diff layout, Mobile status bar, Show reasoning traces, Follow-up behavior, Persist draft
 const ChatSectionContent: React.FC = () => {
-    return <OpenChamberVisualSettings visibleSettings={['chatRenderMode', 'messageTransport', 'activityRenderMode', 'userMessageRendering', 'mermaidRendering', 'reasoning', 'showToolFileIcons', 'showTurnChangedFiles', 'expandedTools', 'collapsibleUserMessages', 'stickyUserHeader', 'wideChatLayout', 'splitAssistantMessageActions', 'diffLayout', 'dotfiles', 'fileViewerPreview', 'followUpBehavior', 'persistDraft', 'inputSpellcheck']} />;
+    return (
+        <div className="space-y-6">
+            <OpenChamberVisualSettings visibleSettings={['chatRenderMode', 'messageTransport', 'activityRenderMode', 'userMessageRendering', 'mermaidRendering', 'reasoning', 'showToolFileIcons', 'showTurnChangedFiles', 'expandedTools', 'collapsibleUserMessages', 'stickyUserHeader', 'wideChatLayout', 'splitAssistantMessageActions', 'diffLayout', 'dotfiles', 'fileViewerPreview', 'followUpBehavior', 'persistDraft', 'inputSpellcheck']} />
+            <div className="border-t border-border/40 pt-6">
+                <DevChamberFeatureSettings />
+            </div>
+        </div>
+    );
 };
 
 // Sessions section: Default model & agent, Session retention
