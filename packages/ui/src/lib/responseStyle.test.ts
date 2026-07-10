@@ -16,9 +16,9 @@ describe('response style presets', () => {
   test('visual mode instructs the assistant to prefer scannable markdown diagrams', () => {
     const instruction = getResponseStylePresetInstructions('visual');
 
-    expect(instruction).toContain('visual-first markdown');
+    expect(instruction).toContain('high-effort diagram mode');
     expect(instruction).toContain('Mermaid diagrams');
-    expect(instruction).toContain('Avoid long paragraphs');
+    expect(instruction).toContain('fall back to concise text-only bullets');
   });
 
   test('visual mode settings build a reusable instruction for the chat toggle', () => {
@@ -29,6 +29,6 @@ describe('response style presets', () => {
 
     expect(settings?.enabled).toBe(true);
     expect(settings?.preset).toBe('visual');
-    expect(settings?.instruction).toContain('visual-first markdown');
+    expect(settings?.instruction).toContain('high-effort diagram mode');
   });
 });

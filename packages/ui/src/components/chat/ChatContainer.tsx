@@ -145,44 +145,30 @@ const ChatResponseViewToggle = React.memo(() => {
         }
     }, [isSaving, mode]);
 
+    const isVisualMode = mode === 'visual';
+
     return (
-        <div className="relative z-20 flex flex-shrink-0 items-center justify-center border-b border-border/60 bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-            <div className="flex items-center gap-2 rounded-full border border-border/70 bg-muted/35 p-1 shadow-sm">
-                <span className="hidden pl-2 pr-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground sm:inline">
-                    {t('chat.responseStyleToggle.label')}
-                </span>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                        'h-7 rounded-full px-3 text-xs font-medium',
-                        mode === 'default' && 'bg-background text-foreground shadow-sm'
-                    )}
-                    disabled={isSaving}
-                    aria-pressed={mode === 'default'}
-                    aria-label={t('chat.responseStyleToggle.defaultAria')}
-                    onClick={() => { void updateMode('default'); }}
-                >
-                    {t('chat.responseStyleToggle.default')}
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                        'h-7 rounded-full px-3 text-xs font-medium',
-                        mode === 'visual' && 'bg-background text-foreground shadow-sm'
-                    )}
-                    disabled={isSaving}
-                    aria-pressed={mode === 'visual'}
-                    aria-label={t('chat.responseStyleToggle.visualAria')}
-                    onClick={() => { void updateMode('visual'); }}
-                >
-                    <Icon name="apps-2-ai" className="mr-1.5 size-3.5" />
-                    {t('chat.responseStyleToggle.visual')}
-                </Button>
-            </div>
+        <div className="relative z-20 flex flex-shrink-0 items-center justify-end border-b border-border/60 bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+            <Button
+                type="button"
+                variant="chip"
+                size="icon"
+                className={cn(
+                    'size-8 rounded-full shadow-sm',
+                    isVisualMode && 'ring-1 ring-[color-mix(in_srgb,var(--primary-base)_24%,transparent)]'
+                )}
+                disabled={isSaving}
+                aria-pressed={isVisualMode}
+                aria-label={t(isVisualMode
+                    ? 'chat.responseStyleToggle.visualAria'
+                    : 'chat.responseStyleToggle.defaultAria')}
+                title={t(isVisualMode
+                    ? 'chat.responseStyleToggle.visualTooltip'
+                    : 'chat.responseStyleToggle.defaultTooltip')}
+                onClick={() => { void updateMode(isVisualMode ? 'default' : 'visual'); }}
+            >
+                <Icon name="apps-2-ai" className="size-4" />
+            </Button>
         </div>
     );
 });

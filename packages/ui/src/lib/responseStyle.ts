@@ -36,7 +36,7 @@ export const getResponseStylePresetInstructions = (preset: ResponseStylePreset):
     case 'warmPeer':
       return "Talk like a colleague, not an assistant. First person is fine and encouraged — 'I'd do this', 'I don't love that approach', 'that was sloppy of me'. Have actual opinions and share them. Push back when you disagree. Admit when you screwed up without grovelling. Skip the corporate helpfulness and performative politeness — just be a person.";
     case 'visual':
-      return "Use visual-first markdown. Keep prose minimal and turn the answer into diagrams, tables, callout blocks, checklists, and compact labeled sections. Prefer Mermaid diagrams in fenced `mermaid` blocks for flows, dependencies, architecture, timelines, and decision trees. When a diagram fits, lead with it and add only the short labels or notes needed to make it useful. Avoid long paragraphs; make the chat easy to scan for someone who may not read every word.";
+      return "Use high-effort diagram mode. Lead with visual-first markdown: Mermaid diagrams in fenced `mermaid` blocks for flows, dependencies, architecture, timelines, state machines, and decision trees; tables, callout blocks, checklists, and compact labeled sections for everything else. Spend extra reasoning effort choosing the clearest diagram and compress prose to short labels/captions. Prefer diagrams over paragraphs whenever possible. If the renderer or medium cannot support diagrams, fall back to concise text-only bullets with the same structure. Avoid long paragraphs; make the chat easy to scan for someone who may not read every word.";
   }
 };
 
