@@ -415,7 +415,7 @@ async function startMobileDev(options) {
     throw new Error('iOS mobile dev actions require macOS and Xcode.');
   }
 
-  const hmrPort = process.env.OPENCHAMBER_HMR_UI_PORT || '5180';
+  const hmrPort = process.env.OPENCHAMBER_HMR_UI_PORT || '5173';
   let hmrBindHost = '127.0.0.1';
   let liveReloadHost = '127.0.0.1';
   let platform = 'ios';
