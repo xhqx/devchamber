@@ -369,6 +369,25 @@ describe('routeMessage skill invocation', () => {
     expect(sendCommandCalls[0].arguments).toBe('focus on auth');
   });
 
+  test('appends synthetic response style reminders to command arguments', async () => {
+    useSkillsStore.setState({
+      skills: [{ name: 'omo', path: '/skills/omo/SKILL.md', scope: 'user', source: 'opencode' }],
+    });
+
+    await routeMessage({
+      sessionId: 'session-skill',
+      directory: '/skills/project',
+      content: '/omo design a dashboard',
+      providerID: 'provider-a',
+      modelID: 'model-a',
+      additionalParts: [{ text: '<system-reminder>Use visual format.</system-reminder>', synthetic: true }],
+    });
+
+    expect(sendCommandCalls).toHaveLength(1);
+    expect(sendCommandCalls[0].command).toBe('omo');
+    expect(sendCommandCalls[0].arguments).toBe('design a dashboard\n\n<system-reminder>Use visual format.</system-reminder>');
+  });
+
   test('sends an unknown slash token as a plain message', async () => {
     await routeMessage({
       sessionId: 'session-skill',

@@ -115,6 +115,15 @@ export function routeMessage(params: {
       || useSkillsStore.getState().skills.some((s) => s.name === cmdName)
 
     if (isCommand) {
+      const commandArguments = tail.join(" ")
+      const commandTextReminders = params.additionalParts
+        ?.map((part) => part.text?.trim())
+        .filter((text): text is string => Boolean(text))
+        .join("\n\n")
+      const commandArgumentsWithReminders = commandTextReminders
+        ? [commandArguments, commandTextReminders].filter(Boolean).join("\n\n")
+        : commandArguments
+
       return optimisticSend({
         sessionId: params.sessionId,
         content: params.content,
@@ -128,7 +137,7 @@ export function routeMessage(params: {
           providerID: params.providerID,
           modelID: params.modelID,
           command: cmdName,
-          arguments: tail.join(" "),
+          arguments: commandArgumentsWithReminders,
           agent: params.agent,
           variant: params.variant,
           files: params.files,
