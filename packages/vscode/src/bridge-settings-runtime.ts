@@ -11,6 +11,7 @@ const OPENCHAMBER_MAGIC_PROMPTS_PATH = path.join(os.homedir(), '.config', 'openc
 const MAGIC_PROMPTS_FILE_VERSION = 1;
 const MAGIC_PROMPT_ID_PATTERN = /^[a-z0-9._-]{1,160}$/;
 const MAGIC_PROMPT_TEXT_MAX_LENGTH = 200_000;
+const DEVCHAMBER_CONFIG_SECTION = 'devchamber';
 const isVisiblePromptId = (id: string): boolean => id.endsWith('.visible');
 
 const isPathInside = (candidatePath: string, parentPath: string): boolean => {
@@ -266,6 +267,37 @@ const readPersistedSettings = (ctx?: BridgeContext): Record<string, unknown> => 
   return { ...fromGlobalState, ...fromDisk };
 };
 
+const readForkFeaturesFromExtensionConfiguration = (): Record<string, unknown> => {
+  const config = vscode.workspace.getConfiguration(DEVCHAMBER_CONFIG_SECTION);
+  return {
+    autoApprove: {
+      enabled: config.get<boolean>('fork.autoApprove.enabled', false),
+      timeoutSeconds: config.get<number>('fork.autoApprove.timeoutSeconds', 30),
+      allowedTools: config.get<string[]>('fork.autoApprove.allowedTools', []),
+    },
+    docs: {
+      requiredOnCodeChange: config.get<boolean>('fork.docs.requiredOnCodeChange', true),
+    },
+    modelFallback: {
+      enabled: config.get<boolean>('fork.modelFallback.enabled', true),
+      chain: config.get<unknown[]>('fork.modelFallback.chain', []),
+    },
+    repoIndex: {
+      enabled: config.get<boolean>('fork.repoIndex.enabled', true),
+    },
+    kanban: {
+      enabled: config.get<boolean>('fork.kanban.enabled', true),
+    },
+    autocomplete: {
+      enabled: config.get<boolean>('fork.autocomplete.enabled', true),
+    },
+    commitGeneration: {
+      maxFiles: config.get<number>('fork.commitGeneration.maxFiles', 40),
+      variantsEnabled: config.get<boolean>('fork.commitGeneration.variantsEnabled', true),
+    },
+  };
+};
+
 export const readSettings = (ctx?: BridgeContext): Record<string, unknown> => {
   const persisted = readPersistedSettings(ctx);
   const persistedOpencodeBinary =
@@ -279,6 +311,7 @@ export const readSettings = (ctx?: BridgeContext): Record<string, unknown> => {
 
   return {
     ...persisted,
+    forkFeatures: readForkFeaturesFromExtensionConfiguration(),
     themeVariant,
     lastDirectory: workspaceFolder,
     opencodeBinary: persistedOpencodeBinary || undefined,
@@ -288,6 +321,7 @@ export const readSettings = (ctx?: BridgeContext): Record<string, unknown> => {
 export const persistSettings = async (changes: Record<string, unknown>, ctx?: BridgeContext): Promise<Record<string, unknown>> => {
   const current = readSettings(ctx);
   const restChanges = stripDerived({ ...(changes || {}) });
+  delete restChanges.forkFeatures;
 
   const keysToClear = new Set<string>();
 

@@ -6,6 +6,7 @@ import { createOpenCodeManager, type OpenCodeManager } from './opencode';
 import { startGlobalEventWatcher, stopGlobalEventWatcher, setChatViewProvider } from './sessionActivityWatcher';
 import { resolveWorkspaceFolders } from './workspaceResolver';
 import { registerCodeAutocompleteProvider } from './codeAutocomplete';
+import { readSettings } from './bridge-settings-runtime';
 
 let chatViewProvider: ChatViewProvider | undefined;
 let agentManagerProvider: AgentManagerPanelProvider | undefined;
@@ -129,6 +130,15 @@ export async function activate(context: vscode.ExtensionContext) {
   // Create chat view provider with manager reference
   // The webview will show a loading state until OpenCode is ready
   chatViewProvider = new ChatViewProvider(context, context.extensionUri, openCodeManager);
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (!event.affectsConfiguration('devchamber.fork')) {
+        return;
+      }
+      chatViewProvider?.notifySettingsSynced(readSettings({ context, manager: openCodeManager }));
+    }),
+  );
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -511,7 +521,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('devchamber.showSettings', () => {
-      chatViewProvider?.showSettings();
+      void vscode.commands.executeCommand('workbench.action.openSettings', '@ext:xhqx.devchamber');
     })
   );
 
