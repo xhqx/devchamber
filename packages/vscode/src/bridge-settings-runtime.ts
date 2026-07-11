@@ -311,7 +311,7 @@ export const readSettings = (ctx?: BridgeContext): Record<string, unknown> => {
 
   return {
     ...persisted,
-    forkFeatures: readForkFeaturesFromExtensionConfiguration(),
+    forkFeatures: persisted.forkFeatures ?? readForkFeaturesFromExtensionConfiguration(),
     themeVariant,
     lastDirectory: workspaceFolder,
     opencodeBinary: persistedOpencodeBinary || undefined,
@@ -321,7 +321,6 @@ export const readSettings = (ctx?: BridgeContext): Record<string, unknown> => {
 export const persistSettings = async (changes: Record<string, unknown>, ctx?: BridgeContext): Promise<Record<string, unknown>> => {
   const current = readSettings(ctx);
   const restChanges = stripDerived({ ...(changes || {}) });
-  delete restChanges.forkFeatures;
 
   const keysToClear = new Set<string>();
 

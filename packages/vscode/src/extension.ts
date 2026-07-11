@@ -521,7 +521,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('devchamber.showSettings', () => {
-      void vscode.commands.executeCommand('workbench.action.openSettings', '@ext:xhqx.devchamber');
+      chatViewProvider?.showSettings();
     })
   );
 
