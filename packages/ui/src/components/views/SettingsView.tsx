@@ -777,7 +777,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
 
     switch (slug) {
       case 'home':
-        return <SettingsHome onOpen={openPage} />;
+        return <OpenChamberPage />;
       case 'projects':
         return <ProjectsPage />;
       case 'remote-instances':
@@ -1019,7 +1019,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
                       onClick={() => openPage(page.slug)}
                       aria-current={selected ? 'page' : undefined}
                       className={cn(
-                        'flex h-8 items-center gap-2 rounded-md px-2 overflow-hidden',
+                        'settings-nav-item flex h-8 items-center gap-2 rounded-md px-2 overflow-hidden',
                         selected
                           ? 'bg-interactive-selection text-foreground'
                           : 'text-foreground hover:bg-interactive-hover'
@@ -1121,7 +1121,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
 
   const renderDesktopContent = () => {
     if (!activePageMeta || settingsSlug === 'home') {
-      return <SettingsHome onOpen={openPage} />;
+      return <OpenChamberPage />;
     }
 
     if (activePageMeta.kind === 'split') {

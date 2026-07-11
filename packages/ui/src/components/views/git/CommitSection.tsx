@@ -179,6 +179,7 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
             }
             type="button"
             aria-label={t('gitView.commit.generateAria')}
+            title={t('gitView.commit.generate')}
             className="commit-actions__btn"
           >
             {isGeneratingMessage ? (
@@ -186,7 +187,7 @@ export const CommitSection: React.FC<CommitSectionProps> = ({
             ) : (
               <Icon name="ai-generate-2" className="size-4 text-primary" />
             )}
-            <span className="commit-actions__label">{t('gitView.commit.generate')}</span>
+            <span className="commit-actions__label commit-actions__label--generate">{t('gitView.commit.generate')}</span>
           </Button>
 
           <div className="flex-1" />

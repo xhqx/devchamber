@@ -823,6 +823,11 @@ html:not(.dark) .chat-scroll {
 }
 
 /* Commit actions: collapse labels when narrow. */
+.settings-nav-item:not([aria-current='page']):hover {
+  background: var(--interactive-selection);
+  color: var(--foreground);
+}
+
 @container commit-actions (max-width: 21rem) {
   .commit-actions__label--long {
     display: none;
@@ -836,7 +841,7 @@ html:not(.dark) .chat-scroll {
 }
 
 @container commit-actions (max-width: 19rem) {
-  .commit-actions__label {
+  .commit-actions__label:not(.commit-actions__label--generate) {
     display: none;
   }
 
