@@ -1,19 +1,17 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ModelMultiSelect, generateInstanceId, type ModelSelectionWithId } from '@/components/multirun/ModelMultiSelect';
 import { toast } from '@/components/ui';
 import { Icon } from '@/components/icon/Icon';
 import { updateDesktopSettings } from '@/lib/persistence';
 import type { ForkFeatureSettings } from '@/lib/forkFeatures';
 import { normalizeForkFeatureSettings } from '@/lib/forkFeatures';
-import type { ModelFallbackChain } from '@/lib/modelFallback';
+import type { ModelFallbackChain, ModelFallbackPurpose, ModelFallbackRetryReason, ModelRef } from '@/lib/modelFallback';
+import { DEFAULT_MODEL_FALLBACK_RETRY_ON, MODEL_FALLBACK_PURPOSES } from '@/lib/modelFallback';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { filterVisibleAgents } from '@/stores/useAgentsStore';
-
-const formatFallbackChain = (chain: ModelFallbackChain[]): string => JSON.stringify(chain, null, 2);
 
 const parseCsv = (value: string): string[] => Array.from(new Set(value
   .split(',')
@@ -25,6 +23,23 @@ const formatCsv = (value: string[]): string => value.join(', ');
 const persistForkFeatures = async (features: ForkFeatureSettings) => {
   await updateDesktopSettings({ forkFeatures: normalizeForkFeatureSettings(features) });
 };
+
+const PURPOSE_LABELS: Record<ModelFallbackPurpose, string> = {
+  chat: 'Chat',
+  commit: 'Commit generation',
+  pr: 'PR summaries',
+  autocomplete: 'Code autocomplete',
+  docs: 'Docs/change notes',
+};
+
+const RETRY_REASON_LABELS: Record<ModelFallbackRetryReason, string> = {
+  timeout: 'Timeout',
+  rate_limit: 'Rate limit',
+  server_error: 'Server error',
+  invalid_json: 'Invalid JSON',
+};
+
+const modelKey = (model: Pick<ModelRef, 'providerID' | 'modelID'>): string => `${model.providerID}/${model.modelID}`;
 
 const SectionHeader: React.FC<{ title: string; description: string }> = ({ title, description }) => (
   <div className="space-y-1 px-1">
@@ -51,20 +66,107 @@ const ToggleRow: React.FC<{
   </label>
 );
 
+const FallbackModelPicker: React.FC<{
+  chain: ModelFallbackChain;
+  knownModelLabels: Map<string, string>;
+  onModelsChange: (models: ModelRef[]) => void;
+  onMaxAttemptsChange: (maxAttempts: number) => void;
+  onRetryReasonToggle: (reason: ModelFallbackRetryReason, checked: boolean) => void;
+}> = ({ chain, knownModelLabels, onModelsChange, onMaxAttemptsChange, onRetryReasonToggle }) => {
+  const selectedModels = React.useMemo<ModelSelectionWithId[]>(() => chain.models.map((model, index) => ({
+    providerID: model.providerID,
+    modelID: model.modelID,
+    variant: model.variant,
+    displayName: knownModelLabels.get(modelKey(model)) ?? modelKey(model),
+    instanceId: `${chain.purpose}-${index}-${modelKey(model)}`,
+  })), [chain.models, chain.purpose, knownModelLabels]);
+
+  const handleAdd = React.useCallback((model: ModelSelectionWithId) => {
+    onModelsChange([...chain.models, { providerID: model.providerID, modelID: model.modelID, ...(model.variant ? { variant: model.variant } : {}) }]);
+  }, [chain.models, onModelsChange]);
+
+  const handleRemove = React.useCallback((index: number) => {
+    onModelsChange(chain.models.filter((_, modelIndex) => modelIndex !== index));
+  }, [chain.models, onModelsChange]);
+
+  const handleUpdate = React.useCallback((index: number, model: ModelSelectionWithId) => {
+    const next = chain.models.slice();
+    next[index] = { providerID: model.providerID, modelID: model.modelID, ...(model.variant ? { variant: model.variant } : {}) };
+    onModelsChange(next);
+  }, [chain.models, onModelsChange]);
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border/40 bg-[var(--surface-background)] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="space-y-0.5">
+          <h6 className="typography-ui-label font-medium text-foreground">{PURPOSE_LABELS[chain.purpose]}</h6>
+          <p className="typography-meta text-muted-foreground">Pick fallback models from configured providers, in retry order.</p>
+        </div>
+        <label className="flex items-center gap-2 typography-meta text-muted-foreground">
+          Attempts
+          <Input
+            type="number"
+            min={1}
+            max={5}
+            value={chain.maxAttempts}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              if (Number.isFinite(value)) onMaxAttemptsChange(value);
+            }}
+            className="h-8 w-16"
+          />
+        </label>
+      </div>
+      <ModelMultiSelect
+        selectedModels={selectedModels.map((model) => ({ ...model, instanceId: model.instanceId || generateInstanceId() }))}
+        onAdd={handleAdd}
+        onRemove={handleRemove}
+        onUpdate={handleUpdate}
+        addButtonLabel="Add fallback model"
+        dropdownSide="bottom"
+        dropdownClassName="!z-[70]"
+      />
+      <div className="flex flex-wrap gap-2">
+        {DEFAULT_MODEL_FALLBACK_RETRY_ON.map((reason) => (
+          <label key={reason} className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border/30 px-2 py-1 typography-meta text-muted-foreground">
+            <Checkbox
+              checked={chain.retryOn.includes(reason)}
+              onChange={(checked) => onRetryReasonToggle(reason, checked)}
+              ariaLabel={`Retry on ${RETRY_REASON_LABELS[reason]}`}
+            />
+            {RETRY_REASON_LABELS[reason]}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const DevChamberFeatureSettings: React.FC = () => {
   const settingsForkFeatures = useConfigStore((state) => state.settingsForkFeatures);
   const setSettingsForkFeatures = useConfigStore((state) => state.setSettingsForkFeatures);
   const agentList = useConfigStore((state) => state.agents);
+  const providers = useConfigStore((state) => state.providers);
   const agents = React.useMemo(() => filterVisibleAgents(agentList), [agentList]);
-  const [fallbackChainDraft, setFallbackChainDraft] = React.useState(() => formatFallbackChain(settingsForkFeatures.modelFallback.chain));
   const [allowedToolsDraft, setAllowedToolsDraft] = React.useState(() => formatCsv(settingsForkFeatures.autoApprove.allowedTools));
-  const [isSavingChain, setIsSavingChain] = React.useState(false);
-  const [chainError, setChainError] = React.useState<string | null>(null);
+
+  const knownModelLabels = React.useMemo(() => {
+    const labels = new Map<string, string>();
+    providers.forEach((provider) => {
+      const providerModels = Array.isArray(provider.models) ? provider.models : [];
+      providerModels.forEach((model) => {
+        const modelID = typeof model.id === 'string' ? model.id : '';
+        if (!modelID) return;
+        const modelName = typeof model.name === 'string' && model.name.trim() ? model.name.trim() : modelID;
+        labels.set(`${provider.id}/${modelID}`, `${modelName} · ${provider.name ?? provider.id}`);
+      });
+    });
+    return labels;
+  }, [providers]);
 
   React.useEffect(() => {
-    setFallbackChainDraft(formatFallbackChain(settingsForkFeatures.modelFallback.chain));
     setAllowedToolsDraft(formatCsv(settingsForkFeatures.autoApprove.allowedTools));
-  }, [settingsForkFeatures]);
+  }, [settingsForkFeatures.autoApprove.allowedTools]);
 
   const updateFeatures = React.useCallback((recipe: (current: ForkFeatureSettings) => ForkFeatureSettings) => {
     const next = normalizeForkFeatureSettings(recipe(settingsForkFeatures));
@@ -75,33 +177,25 @@ export const DevChamberFeatureSettings: React.FC = () => {
     });
   }, [setSettingsForkFeatures, settingsForkFeatures]);
 
-  const saveFallbackChain = React.useCallback(async () => {
-    setIsSavingChain(true);
-    setChainError(null);
-    try {
-      const parsed = JSON.parse(fallbackChainDraft) as unknown;
-      if (!Array.isArray(parsed)) {
-        throw new Error('Fallback chain must be a JSON array.');
-      }
-      const next = normalizeForkFeatureSettings({
-        ...settingsForkFeatures,
+  const updateFallbackChain = React.useCallback((purpose: ModelFallbackPurpose, patchChain: (chain: ModelFallbackChain) => ModelFallbackChain) => {
+    updateFeatures((current) => {
+      const currentChain = current.modelFallback.chain.find((entry) => entry.purpose === purpose) ?? {
+        purpose,
+        models: [],
+        maxAttempts: 1,
+        retryOn: [...DEFAULT_MODEL_FALLBACK_RETRY_ON],
+      };
+      const nextChain = patchChain(currentChain);
+      const otherChains = current.modelFallback.chain.filter((entry) => entry.purpose !== purpose);
+      return {
+        ...current,
         modelFallback: {
-          ...settingsForkFeatures.modelFallback,
-          chain: parsed,
+          ...current.modelFallback,
+          chain: [...otherChains, nextChain].sort((a, b) => MODEL_FALLBACK_PURPOSES.indexOf(a.purpose) - MODEL_FALLBACK_PURPOSES.indexOf(b.purpose)),
         },
-      });
-      setFallbackChainDraft(formatFallbackChain(next.modelFallback.chain));
-      setSettingsForkFeatures(next);
-      await persistForkFeatures(next);
-      toast.success('Fallback chain saved');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Invalid fallback chain JSON';
-      setChainError(message);
-      toast.error(message);
-    } finally {
-      setIsSavingChain(false);
-    }
-  }, [fallbackChainDraft, setSettingsForkFeatures, settingsForkFeatures]);
+      };
+    });
+  }, [updateFeatures]);
 
   const handleAllowedToolsBlur = () => {
     updateFeatures((current) => ({
@@ -179,22 +273,40 @@ export const DevChamberFeatureSettings: React.FC = () => {
             />
             Enable model fallback
           </label>
-          <Textarea
-            value={fallbackChainDraft}
-            onChange={(event) => setFallbackChainDraft(event.target.value)}
-            rows={10}
-            className="w-full font-mono typography-meta bg-transparent"
-            outerClassName="min-h-[180px]"
-            placeholder={'[{ "purpose": "chat", "models": [{ "providerID": "openai", "modelID": "gpt-5.5" }], "maxAttempts": 1, "retryOn": ["timeout"] }]'}
-          />
-          {chainError ? <p className="typography-meta text-destructive">{chainError}</p> : null}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="xs" onClick={saveFallbackChain} disabled={isSavingChain}>
-              {isSavingChain ? 'Saving…' : 'Save fallback chain'}
-            </Button>
-            <p className="typography-meta text-muted-foreground">
-              JSON is normalized on save; invalid purposes or empty models are dropped.
-            </p>
+          <div className="space-y-3">
+            {MODEL_FALLBACK_PURPOSES.map((purpose) => {
+              const chain = settingsForkFeatures.modelFallback.chain.find((entry) => entry.purpose === purpose) ?? {
+                purpose,
+                models: [],
+                maxAttempts: 1,
+                retryOn: [...DEFAULT_MODEL_FALLBACK_RETRY_ON],
+              };
+              return (
+                <FallbackModelPicker
+                  key={purpose}
+                  chain={chain}
+                  knownModelLabels={knownModelLabels}
+                  onModelsChange={(models) => updateFallbackChain(purpose, (current) => ({
+                    ...current,
+                    models,
+                    maxAttempts: Math.max(1, Math.min(5, Math.max(current.maxAttempts, models.length || 1))),
+                  }))}
+                  onMaxAttemptsChange={(maxAttempts) => updateFallbackChain(purpose, (current) => ({
+                    ...current,
+                    maxAttempts,
+                  }))}
+                  onRetryReasonToggle={(reason, checked) => updateFallbackChain(purpose, (current) => {
+                    const retryOn = checked
+                      ? Array.from(new Set([...current.retryOn, reason]))
+                      : current.retryOn.filter((entry) => entry !== reason);
+                    return {
+                      ...current,
+                      retryOn: retryOn.length > 0 ? retryOn : [reason],
+                    };
+                  })}
+                />
+              );
+            })}
           </div>
         </div>
       </section>
