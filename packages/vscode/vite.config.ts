@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const hmrUiPort = Number(process.env.OPENCHAMBER_HMR_UI_PORT || '5173');
+
 export default defineConfig(({ mode }) => ({
   root: path.resolve(__dirname, 'webview'),
   base: './',  // Use relative paths for VS Code webview
@@ -34,7 +36,7 @@ export default defineConfig(({ mode }) => ({
   envPrefix: ['VITE_'],
   server: {
     host: 'localhost',
-    port: 5173,
+    port: hmrUiPort,
     strictPort: true,
     cors: true,
     headers: {
@@ -43,7 +45,7 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       host: 'localhost',
       protocol: 'ws',
-      port: 5173,
+      port: hmrUiPort,
     },
   },
   optimizeDeps: {

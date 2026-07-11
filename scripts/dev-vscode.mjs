@@ -15,20 +15,21 @@ const codeBin = process.env.OPENCHAMBER_VSCODE_BIN || 'code';
 const workspaceArg = process.argv[2] || process.env.OPENCHAMBER_VSCODE_DEV_WORKSPACE || repoRoot;
 const workspacePath = path.resolve(workspaceArg);
 
-const resolveDevServerAddress = () => {
-  const configured = process.env.OPENCHAMBER_VSCODE_WEBVIEW_URL;
+const parseDevServerAddress = (configured) => {
   if (!configured) {
-    return { host: 'localhost', port: 5173 };
+    return null;
   }
 
   try {
     const parsed = new URL(configured);
     return {
-      host: parsed.hostname || '127.0.0.1',
+      host: parsed.hostname || 'localhost',
       port: Number(parsed.port) || (parsed.protocol === 'https:' ? 443 : 80),
+      url: parsed.toString().replace(/\/$/, ''),
+      configured: true,
     };
   } catch {
-    return { host: 'localhost', port: 5173 };
+    return null;
   }
 };
 
@@ -62,6 +63,34 @@ const waitForPort = async (host, port, timeoutMs, shouldAbort) => {
     await sleep(200);
   }
   return false;
+};
+
+const findAvailablePort = async (host, preferredPort, maxAttempts = 20) => {
+  for (let offset = 0; offset < maxAttempts; offset += 1) {
+    const port = preferredPort + offset;
+    const occupied = await probePort(host, port, 200);
+    if (!occupied) {
+      return port;
+    }
+  }
+  throw new Error(`No available webview dev-server port found from ${preferredPort} to ${preferredPort + maxAttempts - 1}`);
+};
+
+const resolveDevServerAddress = async () => {
+  const configured = parseDevServerAddress(process.env.OPENCHAMBER_VSCODE_WEBVIEW_URL);
+  if (configured) {
+    return configured;
+  }
+
+  const host = 'localhost';
+  const preferredPort = Number(process.env.OPENCHAMBER_HMR_UI_PORT || '5173');
+  const port = await findAvailablePort(host, preferredPort);
+  return {
+    host,
+    port,
+    url: `http://${host}:${port}`,
+    configured: false,
+  };
 };
 
 if (!fs.existsSync(workspacePath)) {
@@ -145,12 +174,22 @@ async function stopChildTree(child) {
 }
 
 let shuttingDown = false;
-const dev = run('vscode dev watchers', 'bun', ['run', '--cwd', 'packages/vscode', 'dev']);
+const { host: devServerHost, port: devServerPort, url: devServerUrl, configured: devServerConfigured } = await resolveDevServerAddress();
+const devEnv = {
+  ...process.env,
+  OPENCHAMBER_HMR_UI_PORT: String(devServerPort),
+  OPENCHAMBER_VSCODE_WEBVIEW_URL: devServerUrl,
+};
+
+if (!devServerConfigured && devServerPort !== Number(process.env.OPENCHAMBER_HMR_UI_PORT || '5173')) {
+  console.warn(`[dev:vscode] Port ${process.env.OPENCHAMBER_HMR_UI_PORT || '5173'} is busy; using webview dev server ${devServerUrl}`);
+}
+
+const dev = run('vscode dev watchers', 'bun', ['run', '--cwd', 'packages/vscode', 'dev'], { env: devEnv });
 
 console.log(`[dev:vscode] Starting extension host with ${codeBin}`);
 console.log(`[dev:vscode] Workspace: ${workspacePath}`);
 console.log(`[dev:vscode] Extension: ${extensionPath}`);
-const { host: devServerHost, port: devServerPort } = resolveDevServerAddress();
 console.log(`[dev:vscode] Waiting for webview dev server at ${devServerHost}:${devServerPort}`);
 
 const ready = await waitForPort(devServerHost, devServerPort, 30000, () => shuttingDown || dev.exitCode !== null || dev.signalCode !== null);
@@ -169,7 +208,7 @@ const host = run(
     '--wait',
     workspacePath,
   ],
-  { detached: false },
+  { detached: false, env: devEnv },
 );
 
 async function shutdown(exitCode = 0) {
