@@ -13,11 +13,13 @@ describe('response style presets', () => {
     expect(isResponseStylePreset('visual')).toBe(true);
   });
 
-  test('visual mode instructs the assistant to prefer scannable markdown diagrams', () => {
+  test('visual mode instructs the assistant to choose canvas-rich visual formats', () => {
     const instruction = getResponseStylePresetInstructions('visual');
 
-    expect(instruction).toContain('high-effort diagram mode');
-    expect(instruction).toContain('Mermaid diagrams');
+    expect(instruction).toContain('high-effort visual canvas mode');
+    expect(instruction).toContain('`canvas` fenced blocks');
+    expect(instruction).toContain('spatial freeform boards');
+    expect(instruction).toContain('Mermaid for formal flows');
     expect(instruction).toContain('fall back to concise text-only bullets');
   });
 
@@ -29,6 +31,6 @@ describe('response style presets', () => {
 
     expect(settings?.enabled).toBe(true);
     expect(settings?.preset).toBe('visual');
-    expect(settings?.instruction).toContain('high-effort diagram mode');
+    expect(settings?.instruction).toContain('high-effort visual canvas mode');
   });
 });

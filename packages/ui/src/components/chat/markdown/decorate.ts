@@ -81,8 +81,8 @@ const decorateInlineCode = (root: HTMLElement): void => {
 const decorateCodeBlocks = (root: HTMLElement, labels: DecorateLabels): void => {
   const blocks = root.querySelectorAll<HTMLPreElement>('pre');
   for (const pre of Array.from(blocks)) {
-    // Skip mermaid placeholders (handled separately).
-    if (pre.querySelector('code.language-mermaid')) continue;
+    // Skip rich visual placeholders (handled separately).
+    if (pre.querySelector('code.language-mermaid, code.language-canvas')) continue;
     const parent = pre.parentElement;
     if (!parent) continue;
     // Already wrapped (idempotent across morphdom passes).
@@ -233,6 +233,86 @@ const decorateTables = (root: HTMLElement, labels: DecorateLabels): void => {
 };
 
 // ---------------------------------------------------------------------------
+// Canvas: replace ```canvas freeform fences with a lightweight whiteboard block
+// ---------------------------------------------------------------------------
+
+const appendCanvasLine = (lineEl: HTMLElement, line: string): void => {
+  const tokenRe = /(\[[^\]\n]{1,120}\]|\{[^}\n]{1,120}\}|\([^()\n]{1,80}\)|[-=]+>|←|→|↔|=>)/g;
+  let cursor = 0;
+  let match: RegExpExecArray | null = tokenRe.exec(line);
+  while (match) {
+    if (match.index > cursor) {
+      lineEl.appendChild(document.createTextNode(line.slice(cursor, match.index)));
+    }
+    const token = match[0] ?? '';
+    const span = document.createElement('span');
+    if (token.startsWith('[') && token.endsWith(']')) {
+      span.className = 'inline-flex rounded-xl border border-primary/35 bg-primary/10 px-2 py-0.5 font-medium text-foreground shadow-sm';
+      span.textContent = token.slice(1, -1).trim();
+    } else if (token.startsWith('{') && token.endsWith('}')) {
+      span.className = 'inline-flex -rotate-1 rounded-lg border border-amber-400/45 bg-amber-300/20 px-2 py-0.5 text-amber-950 shadow-sm dark:text-amber-100';
+      span.textContent = token.slice(1, -1).trim();
+    } else if (token.startsWith('(') && token.endsWith(')')) {
+      span.className = 'inline-flex rounded-full border border-border/80 bg-[var(--surface-muted)] px-2 py-0.5 text-muted-foreground';
+      span.textContent = token.slice(1, -1).trim();
+    } else {
+      span.className = 'mx-1 inline-flex font-semibold text-primary';
+      span.textContent = token;
+    }
+    lineEl.appendChild(span);
+    cursor = match.index + token.length;
+    match = tokenRe.exec(line);
+  }
+  if (cursor < line.length) {
+    lineEl.appendChild(document.createTextNode(line.slice(cursor)));
+  }
+};
+
+const decorateCanvas = (root: HTMLElement, labels: DecorateLabels): void => {
+  const codes = root.querySelectorAll<HTMLElement>('pre > code.language-canvas');
+  for (const code of Array.from(codes)) {
+    const pre = code.parentElement as HTMLPreElement | null;
+    if (!pre) continue;
+    const source = (code.textContent ?? '').replace(/\s+$/, '');
+
+    const block = document.createElement('div');
+    block.setAttribute('data-markdown', 'canvas-block');
+    block.className = 'group relative my-4 overflow-hidden rounded-3xl border border-border/80 bg-[var(--surface-elevated)] shadow-sm';
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full border border-border/70 bg-[var(--surface-elevated)]/90 px-1 py-0.5 opacity-0 shadow-sm backdrop-blur transition-opacity group-hover:opacity-100';
+    const copy = makeIconButton('copy', labels.copy, 'canvas-copy');
+    const download = makeIconButton('download', 'Download canvas', 'canvas-download');
+    toolbar.appendChild(copy);
+    toolbar.appendChild(download);
+
+    const board = document.createElement('div');
+    board.setAttribute('data-markdown', 'canvas-board');
+    board.setAttribute('data-md-source', source);
+    board.className = 'overflow-x-auto p-5 font-mono text-[13px] leading-7 text-foreground/90';
+    board.style.backgroundImage = 'radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 0)';
+    board.style.backgroundSize = '18px 18px';
+
+    const content = document.createElement('div');
+    content.className = 'inline-block min-w-full whitespace-pre';
+    const lines = source.split(/\r?\n/);
+    for (const line of lines.length > 0 ? lines : ['']) {
+      const lineEl = document.createElement('div');
+      lineEl.className = 'min-h-7';
+      appendCanvasLine(lineEl, line);
+      content.appendChild(lineEl);
+    }
+    board.appendChild(content);
+    block.appendChild(board);
+    block.appendChild(toolbar);
+
+    const host = pre.parentElement;
+    if (!host) continue;
+    host.replaceChild(block, pre);
+  }
+};
+
+// ---------------------------------------------------------------------------
 // Mermaid: replace ```mermaid code fences with rendered diagram blocks
 // ---------------------------------------------------------------------------
 
@@ -331,6 +411,7 @@ const decorateLinks = (root: HTMLElement, ctx: DecorateContext): void => {
 /** Run all idempotent DOM decoration passes over freshly-rendered markdown. */
 export const decorateMarkdown = (root: HTMLElement, ctx: DecorateContext): void => {
   decorateInlineCode(root);
+  decorateCanvas(root, ctx.labels);
   decorateMermaid(root, ctx);
   decorateCodeBlocks(root, ctx.labels);
   decorateTables(root, ctx.labels);
@@ -420,6 +501,19 @@ export const attachMarkdownInteractions = (
         downloadBlob(format === 'csv' ? 'table.csv' : 'table.md', content, format === 'csv' ? 'text/csv' : 'text/markdown');
       }
       closeAllMenus(container);
+      return;
+    }
+
+    // Canvas copy/download source
+    if (action === 'canvas-copy') {
+      const source = actionEl.closest('[data-markdown="canvas-block"]')?.querySelector<HTMLElement>('[data-md-source]')?.getAttribute('data-md-source') ?? '';
+      if (source) void copyTextToClipboard(source).then(() => flashCopied(actionEl as HTMLButtonElement, ctx.labels.copied, 'copy', ctx.labels.copy));
+      return;
+    }
+
+    if (action === 'canvas-download') {
+      const source = actionEl.closest('[data-markdown="canvas-block"]')?.querySelector<HTMLElement>('[data-md-source]')?.getAttribute('data-md-source') ?? '';
+      if (source) downloadBlob('canvas.txt', source, 'text/plain;charset=utf-8');
       return;
     }
 
