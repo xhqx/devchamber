@@ -151,9 +151,6 @@ const ChatSectionContent: React.FC = () => {
     return (
         <div className="space-y-6">
             <OpenChamberVisualSettings visibleSettings={['chatRenderMode', 'messageTransport', 'activityRenderMode', 'userMessageRendering', 'mermaidRendering', 'reasoning', 'showToolFileIcons', 'showTurnChangedFiles', 'expandedTools', 'collapsibleUserMessages', 'stickyUserHeader', 'wideChatLayout', 'splitAssistantMessageActions', 'diffLayout', 'dotfiles', 'fileViewerPreview', 'followUpBehavior', 'persistDraft', 'inputSpellcheck']} />
-            <div className="border-t border-border/40 pt-6">
-                <DevChamberFeatureSettings />
-            </div>
         </div>
     );
 };

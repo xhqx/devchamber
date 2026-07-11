@@ -37,6 +37,7 @@
   "activationEvents": [
     "onStartupFinished",
     "onCommand:devchamber.openSidebar",
+    "onCommand:devchamber.generateCommitMessage",
     "onCommand:devchamber.attachExplorerToChat",
     "onView:devchamber.chatView"
   ],
@@ -179,6 +180,14 @@
       "scm/title": [
         {
           "command": "devchamber.generateCommitMessage",
+          "when": "scmProvider == git",
+          "group": "navigation@0"
+        }
+      ],
+      "scm/sourceControl": [
+        {
+          "command": "devchamber.generateCommitMessage",
+          "when": "scmProvider == git",
           "group": "navigation@0"
         }
       ],

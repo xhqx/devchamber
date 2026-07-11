@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Icon } from '@/components/icon/Icon';
+import { DevChamberFeatureSettings } from '@/components/sections/openchamber/DevChamberFeatureSettings';
 
 type PermissionAction = 'allow' | 'ask' | 'deny';
 type PermissionRule = { permission: string; pattern: string; action: PermissionAction };
@@ -689,6 +690,10 @@ export const AgentsPage: React.FC = () => {
               {isNewAgent ? t('settings.agents.page.subtitle.new') : t('settings.agents.page.subtitle.edit')}
             </p>
           </div>
+        </div>
+
+        <div className="mb-8 border-t border-border/40 pt-6">
+          <DevChamberFeatureSettings />
         </div>
 
         {/* Identity & Role */}

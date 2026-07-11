@@ -526,7 +526,12 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('devchamber.generateCommitMessage', () => {
+    vscode.commands.registerCommand('devchamber.generateCommitMessage', async () => {
+      const opened = await revealChatViewForPayload();
+      if (!opened) {
+        vscode.window.showWarningMessage(t('DevChamber: Chat sidebar is not ready'));
+        return;
+      }
       chatViewProvider?.generateCommitMessage();
     })
   );

@@ -95,7 +95,7 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
     title: 'Agents',
     group: 'opencode',
     kind: 'split',
-    keywords: ['agent', 'agents', 'prompts', 'tools', 'permissions'],
+    keywords: ['agent', 'agents', 'prompts', 'tools', 'permissions', 'model fallback', 'autocomplete agent', 'devchamber features'],
   },
   {
     slug: 'behavior',
