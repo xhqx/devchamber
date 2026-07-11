@@ -300,6 +300,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  public generateCommitMessage() {
+    if (this._view) {
+      this._view.show(true);
+      this._view.webview.postMessage({
+        type: 'command',
+        command: 'generateCommitMessage',
+      });
+    }
+  }
+
   public postMessage(message: unknown): void {
     if (this._view) {
       this._view.webview.postMessage(message);

@@ -1384,6 +1384,13 @@ onCommand('showSettings', () => {
   window.dispatchEvent(new CustomEvent('openchamber:navigate', { detail: { view: 'settings' } }));
 });
 
+onCommand('generateCommitMessage', () => {
+  window.dispatchEvent(new CustomEvent('openchamber:navigate', { detail: { view: 'git' } }));
+  window.setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('openchamber:generate-commit-message'));
+  }, 120);
+});
+
 // Run the same full OpenCode reload flow the app uses after an update: shows the
 // reload overlay, restarts the managed OpenCode (via the bridge's /api/config/reload),
 // and refreshes config/data. Triggered by the "Restart API Connection" command.

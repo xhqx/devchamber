@@ -3,11 +3,17 @@ import { buildCodeAutocompleteSuggestion } from './codeAutocompleteCore';
 
 const CONFIG_SECTION = 'devchamber';
 const CONFIG_KEY = 'fork.autocomplete.enabled';
+const AGENT_CONFIG_KEY = 'fork.autocomplete.agentName';
 const MAX_DOCUMENT_CHARS = 200_000;
 
 const isCodeAutocompleteEnabled = (): boolean => (
   vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>(CONFIG_KEY, true)
 );
+
+const getCodeAutocompleteAgentName = (): string | null => {
+  const value = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>(AGENT_CONFIG_KEY, '');
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+};
 
 const getBoundedDocumentText = (document: vscode.TextDocument, position: vscode.Position): { text: string; offset: number } => {
   const fullText = document.getText();
@@ -44,12 +50,14 @@ class DevChamberInlineCompletionProvider implements vscode.InlineCompletionItemP
     const linePrefix = line.slice(0, position.character);
     const lineSuffix = line.slice(position.character);
     const { text, offset } = getBoundedDocumentText(document, position);
+    const autocompleteAgentName = getCodeAutocompleteAgentName();
     const suggestion = buildCodeAutocompleteSuggestion({
       text,
       offset,
       linePrefix,
       lineSuffix,
       languageId: document.languageId,
+      agentName: autocompleteAgentName ?? undefined,
     });
 
     if (!suggestion) {

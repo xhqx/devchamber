@@ -14,6 +14,7 @@
   "command.improveCode.title": "Améliorer le code",
   "command.newSession.title": "Nouvelle session",
   "command.showSettings.title": "Paramètres",
+  "command.generateCommitMessage.title": "Générer le message de commit",
   "command.attachExplorerToChat.title": "Joindre au chat DevChamber",
   "configuration.apiUrl.description": "URL d’un serveur API OpenCode externe. Laissez vide pour démarrer automatiquement une instance locale.",
   "configuration.opencodeBinary.description": "Chemin absolu facultatif vers le binaire CLI opencode. Utile si la recherche PATH échoue. Nécessite de recharger la fenêtre ou de redémarrer l’API pour être pris en compte.",
@@ -26,6 +27,7 @@
   "configuration.fork.repoIndex.enabled.description": "Activer l'index du dépôt utilisé par l'autocomplétion, le contexte et la couverture documentaire.",
   "configuration.fork.kanban.enabled.description": "Activer le tableau Kanban local au projet.",
   "configuration.fork.autocomplete.enabled.description": "Activer les suggestions d’autocomplétion de code inline dans l’éditeur VS Code.",
+  "configuration.fork.autocomplete.agentName.description": "Nom de l’agent à utiliser pour l’autocomplétion inline DevChamber. Laissez vide pour utiliser l’agent actif/par défaut.",
   "configuration.fork.commitGeneration.maxFiles.description": "Nombre maximal de chemins de fichiers indexés envoyés à la génération du message de commit. Les fichiers supplémentaires sont omis du prompt et signalés dans l’interface.",
   "configuration.fork.commitGeneration.variantsEnabled.description": "Affiche des variantes de message de commit en un clic après la génération."
 }

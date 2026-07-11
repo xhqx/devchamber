@@ -4,6 +4,7 @@ export type CodeAutocompleteRequest = {
   linePrefix: string;
   lineSuffix: string;
   languageId?: string;
+  agentName?: string;
   maxSuggestionLength?: number;
 };
 

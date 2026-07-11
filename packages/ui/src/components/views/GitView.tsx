@@ -1332,6 +1332,14 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     t,
   ]);
 
+  React.useEffect(() => {
+    const handler = () => {
+      void handleGenerateCommitMessage();
+    };
+    window.addEventListener('openchamber:generate-commit-message', handler);
+    return () => window.removeEventListener('openchamber:generate-commit-message', handler);
+  }, [handleGenerateCommitMessage]);
+
   const formatBlockingReason = (reason: ReturnType<typeof getMutationBlockingReasons>[number]): string => {
     if (reason.reason === 'attention') {
       return `${reason.attentionReason} in progress`;

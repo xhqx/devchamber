@@ -83,8 +83,8 @@ export const ChatResponseViewToggle = React.memo<ChatResponseViewToggleProps>(({
     <button
       type="button"
       className={cn(
-        'inline-flex h-9 w-9 items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60',
-        isVisualMode && 'text-primary ring-1 ring-[color-mix(in_srgb,var(--primary-base)_28%,transparent)]',
+        'chat-response-view-toggle inline-flex h-9 w-9 items-center justify-center p-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60',
+        isVisualMode && 'chat-response-view-toggle--visual text-primary',
         className,
       )}
       disabled={isSaving}

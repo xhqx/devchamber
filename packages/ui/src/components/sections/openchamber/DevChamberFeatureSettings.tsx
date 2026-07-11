@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui';
 import { Icon } from '@/components/icon/Icon';
 import { updateDesktopSettings } from '@/lib/persistence';
@@ -10,6 +11,7 @@ import type { ForkFeatureSettings } from '@/lib/forkFeatures';
 import { normalizeForkFeatureSettings } from '@/lib/forkFeatures';
 import type { ModelFallbackChain } from '@/lib/modelFallback';
 import { useConfigStore } from '@/stores/useConfigStore';
+import { filterVisibleAgents } from '@/stores/useAgentsStore';
 
 const formatFallbackChain = (chain: ModelFallbackChain[]): string => JSON.stringify(chain, null, 2);
 
@@ -52,6 +54,8 @@ const ToggleRow: React.FC<{
 export const DevChamberFeatureSettings: React.FC = () => {
   const settingsForkFeatures = useConfigStore((state) => state.settingsForkFeatures);
   const setSettingsForkFeatures = useConfigStore((state) => state.setSettingsForkFeatures);
+  const agentList = useConfigStore((state) => state.agents);
+  const agents = React.useMemo(() => filterVisibleAgents(agentList), [agentList]);
   const [fallbackChainDraft, setFallbackChainDraft] = React.useState(() => formatFallbackChain(settingsForkFeatures.modelFallback.chain));
   const [allowedToolsDraft, setAllowedToolsDraft] = React.useState(() => formatCsv(settingsForkFeatures.autoApprove.allowedTools));
   const [isSavingChain, setIsSavingChain] = React.useState(false);
@@ -116,16 +120,11 @@ export const DevChamberFeatureSettings: React.FC = () => {
         description="Control fork-only agentic IDE behavior from the UI instead of editing raw configuration."
       />
 
-      <section className="space-y-3 px-1">
-        <ToggleRow
-          checked={settingsForkFeatures.docs.requiredOnCodeChange}
-          label="Require docs on code changes"
-          description="Keep the documentation gate visible for commits that modify code."
-          onChange={(checked) => updateFeatures((current) => ({
-            ...current,
-            docs: { ...current.docs, requiredOnCodeChange: checked },
-          }))}
-        />
+      <section className="space-y-3 rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
+        <div className="space-y-1">
+          <h4 className="typography-ui-label font-medium text-foreground">Agents and models</h4>
+          <p className="typography-meta text-muted-foreground">Choose the autocomplete agent and keep model fallback with agent behavior.</p>
+        </div>
 
         <ToggleRow
           checked={settingsForkFeatures.autocomplete.enabled}
@@ -134,6 +133,85 @@ export const DevChamberFeatureSettings: React.FC = () => {
           onChange={(checked) => updateFeatures((current) => ({
             ...current,
             autocomplete: { ...current.autocomplete, enabled: checked },
+          }))}
+        />
+
+        <label className="block space-y-1">
+          <span className="typography-meta text-muted-foreground">Autocomplete agent</span>
+          <Select
+            value={settingsForkFeatures.autocomplete.agentName ?? '__default'}
+            onValueChange={(value) => updateFeatures((current) => ({
+              ...current,
+              autocomplete: {
+                ...current.autocomplete,
+                agentName: value === '__default' ? null : value,
+              },
+            }))}
+          >
+            <SelectTrigger className="h-8 w-full sm:w-64">
+              <SelectValue>{settingsForkFeatures.autocomplete.agentName ?? 'Default active agent'}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__default">Default active agent</SelectItem>
+              {agents.map((agent) => (
+                <SelectItem key={agent.name} value={agent.name}>{agent.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="typography-meta text-muted-foreground">Used by the VS Code inline autocomplete provider when set.</p>
+        </label>
+
+        <div className="space-y-3 border-t border-border/40 pt-3">
+          <div className="space-y-1">
+            <h5 className="typography-ui-label font-medium text-foreground">Model fallback</h5>
+            <p className="typography-meta text-muted-foreground">
+              Define fallback model chains for chat, commit, PR, autocomplete, and docs purposes.
+            </p>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 typography-ui-label text-foreground">
+            <Checkbox
+              checked={settingsForkFeatures.modelFallback.enabled}
+              onChange={(checked) => updateFeatures((current) => ({
+                ...current,
+                modelFallback: { ...current.modelFallback, enabled: checked },
+              }))}
+              ariaLabel="Enable model fallback"
+            />
+            Enable model fallback
+          </label>
+          <Textarea
+            value={fallbackChainDraft}
+            onChange={(event) => setFallbackChainDraft(event.target.value)}
+            rows={10}
+            className="w-full font-mono typography-meta bg-transparent"
+            outerClassName="min-h-[180px]"
+            placeholder={'[{ "purpose": "chat", "models": [{ "providerID": "openai", "modelID": "gpt-5.5" }], "maxAttempts": 1, "retryOn": ["timeout"] }]'}
+          />
+          {chainError ? <p className="typography-meta text-destructive">{chainError}</p> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="xs" onClick={saveFallbackChain} disabled={isSavingChain}>
+              {isSavingChain ? 'Saving…' : 'Save fallback chain'}
+            </Button>
+            <p className="typography-meta text-muted-foreground">
+              JSON is normalized on save; invalid purposes or empty models are dropped.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
+        <div className="space-y-1">
+          <h4 className="typography-ui-label font-medium text-foreground">Workspace features</h4>
+          <p className="typography-meta text-muted-foreground">Separate planning, repo, and documentation spaces.</p>
+        </div>
+
+        <ToggleRow
+          checked={settingsForkFeatures.docs.requiredOnCodeChange}
+          label="Require docs on code changes"
+          description="Keep the documentation gate visible for commits that modify code."
+          onChange={(checked) => updateFeatures((current) => ({
+            ...current,
+            docs: { ...current.docs, requiredOnCodeChange: checked },
           }))}
         />
 
@@ -240,42 +318,6 @@ export const DevChamberFeatureSettings: React.FC = () => {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
-        <div className="space-y-1">
-          <h4 className="typography-ui-label font-medium text-foreground">Model fallback</h4>
-          <p className="typography-meta text-muted-foreground">
-            Define fallback model chains for chat, commit, PR, autocomplete, and docs purposes.
-          </p>
-        </div>
-        <label className="flex cursor-pointer items-center gap-2 typography-ui-label text-foreground">
-          <Checkbox
-            checked={settingsForkFeatures.modelFallback.enabled}
-            onChange={(checked) => updateFeatures((current) => ({
-              ...current,
-              modelFallback: { ...current.modelFallback, enabled: checked },
-            }))}
-            ariaLabel="Enable model fallback"
-          />
-          Enable model fallback
-        </label>
-        <Textarea
-          value={fallbackChainDraft}
-          onChange={(event) => setFallbackChainDraft(event.target.value)}
-          rows={10}
-          className="w-full font-mono typography-meta bg-transparent"
-          outerClassName="min-h-[180px]"
-          placeholder={'[{ "purpose": "chat", "models": [{ "providerID": "openai", "modelID": "gpt-5.5" }], "maxAttempts": 1, "retryOn": ["timeout"] }]'}
-        />
-        {chainError ? <p className="typography-meta text-destructive">{chainError}</p> : null}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="xs" onClick={saveFallbackChain} disabled={isSavingChain}>
-            {isSavingChain ? 'Saving…' : 'Save fallback chain'}
-          </Button>
-          <p className="typography-meta text-muted-foreground">
-            JSON is normalized on save; invalid purposes or empty models are dropped.
-          </p>
-        </div>
-      </section>
     </div>
   );
 };

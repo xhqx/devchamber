@@ -526,6 +526,12 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('devchamber.generateCommitMessage', () => {
+      chatViewProvider?.generateCommitMessage();
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('devchamber.showOpenCodeStatus', async () => {
       const config = vscode.workspace.getConfiguration('openchamber');
       const configuredApiUrl = (config.get<string>('apiUrl') || '').trim();

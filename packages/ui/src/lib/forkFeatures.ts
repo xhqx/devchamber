@@ -22,6 +22,7 @@ export type ForkFeatureSettings = {
   };
   autocomplete: {
     enabled: boolean;
+    agentName: string | null;
   };
   commitGeneration: {
     maxFiles: number;
@@ -50,6 +51,7 @@ export const DEFAULT_FORK_FEATURE_SETTINGS: ForkFeatureSettings = {
   },
   autocomplete: {
     enabled: true,
+    agentName: null,
   },
   commitGeneration: {
     maxFiles: 40,
@@ -76,6 +78,10 @@ const normalizeStringArray = (value: unknown): string[] => {
 
 const normalizeBoolean = (value: unknown, fallback: boolean): boolean => (
   typeof value === 'boolean' ? value : fallback
+);
+
+const normalizeOptionalString = (value: unknown): string | null => (
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 );
 
 const normalizePositiveInteger = (value: unknown, fallback: number, min: number, max: number): number => {
@@ -133,6 +139,7 @@ export const normalizeForkFeatureSettings = (value: unknown): ForkFeatureSetting
     },
     autocomplete: {
       enabled: normalizeBoolean(pick(autocomplete, 'enabled', 'fork.autocomplete.enabled'), DEFAULT_FORK_FEATURE_SETTINGS.autocomplete.enabled),
+      agentName: normalizeOptionalString(pick(autocomplete, 'agentName', 'fork.autocomplete.agentName')),
     },
     commitGeneration: {
       maxFiles: normalizePositiveInteger(

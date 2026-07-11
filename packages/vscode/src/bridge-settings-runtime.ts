@@ -290,6 +290,7 @@ const readForkFeaturesFromExtensionConfiguration = (): Record<string, unknown> =
     },
     autocomplete: {
       enabled: config.get<boolean>('fork.autocomplete.enabled', true),
+      agentName: config.get<string>('fork.autocomplete.agentName', '') || null,
     },
     commitGeneration: {
       maxFiles: config.get<number>('fork.commitGeneration.maxFiles', 40),

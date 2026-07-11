@@ -139,6 +139,12 @@
         "icon": "$(settings-gear)"
       },
       {
+        "command": "devchamber.generateCommitMessage",
+        "category": "DevChamber",
+        "title": "%command.generateCommitMessage.title%",
+        "icon": "$(sparkle)"
+      },
+      {
         "command": "devchamber.attachExplorerToChat",
         "category": "DevChamber",
         "title": "%command.attachExplorerToChat.title%"
@@ -170,7 +176,18 @@
           "group": "navigation@1"
         }
       ],
+      "scm/title": [
+        {
+          "command": "devchamber.generateCommitMessage",
+          "group": "navigation@0"
+        }
+      ],
       "view/title": [
+        {
+          "command": "devchamber.generateCommitMessage",
+          "when": "view == workbench.scm",
+          "group": "navigation@0"
+        },
         {
           "command": "devchamber.newSession",
           "when": "view == devchamber.chatView",
@@ -230,6 +247,12 @@
           "default": true,
           "order": 120,
           "description": "%configuration.fork.autocomplete.enabled.description%"
+        },
+        "devchamber.fork.autocomplete.agentName": {
+          "type": "string",
+          "default": "",
+          "order": 121,
+          "description": "%configuration.fork.autocomplete.agentName.description%"
         },
         "devchamber.fork.repoIndex.enabled": {
           "type": "boolean",

@@ -828,6 +828,47 @@ html:not(.dark) .chat-scroll {
   color: var(--foreground);
 }
 
+.chat-response-view-toggle {
+  position: relative;
+  border-radius: 0.625rem;
+}
+
+.chat-response-view-toggle--visual::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--visual-response-border-angle, 0deg),
+    color-mix(in srgb, var(--primary-base) 22%, transparent),
+    var(--primary-base),
+    color-mix(in srgb, var(--primary-base) 45%, var(--foreground)),
+    color-mix(in srgb, var(--primary-base) 22%, transparent)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: visual-response-border-spin 2.4s linear infinite;
+}
+
+@property --visual-response-border-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes visual-response-border-spin {
+  to { --visual-response-border-angle: 360deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-response-view-toggle--visual::before {
+    animation: none;
+  }
+}
+
 @container commit-actions (max-width: 21rem) {
   .commit-actions__label--long {
     display: none;
