@@ -709,7 +709,7 @@ export const createSettingsHelpers = (dependencies) => {
 
     if (
       typeof candidate.responseStylePreset === 'string' &&
-      ['concise', 'detailed', 'mentor', 'pushback', 'noFiller', 'matchEnergy', 'warmPeer', 'custom'].includes(candidate.responseStylePreset)
+      ['concise', 'detailed', 'mentor', 'pushback', 'noFiller', 'matchEnergy', 'warmPeer', 'visual', 'custom'].includes(candidate.responseStylePreset)
     ) {
       result.responseStylePreset = candidate.responseStylePreset;
     }
@@ -718,6 +718,13 @@ export const createSettingsHelpers = (dependencies) => {
       const value = candidate.responseStyleCustomInstructions;
       if (value.length <= 50_000) {
         result.responseStyleCustomInstructions = value;
+      }
+    }
+
+    if (typeof candidate.responseStyleVisualInstructions === 'string') {
+      const value = candidate.responseStyleVisualInstructions;
+      if (value.length <= 50_000) {
+        result.responseStyleVisualInstructions = value;
       }
     }
 

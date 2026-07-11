@@ -8,6 +8,7 @@ export type ResponseStyleSettings = {
   enabled: boolean;
   preset: ResponseStylePresetValue | null;
   customInstructions: string;
+  visualInstructions: string;
   instruction: string | null;
 };
 
@@ -44,15 +45,21 @@ export const buildResponseStyleInstruction = ({
   enabled,
   preset,
   customInstructions,
+  visualInstructions,
 }: {
   enabled?: boolean;
   preset?: unknown;
   customInstructions?: unknown;
+  visualInstructions?: unknown;
 }): string | null => {
   if (!enabled) return null;
   if (preset === 'custom') {
     const custom = typeof customInstructions === 'string' ? customInstructions.trim() : '';
     return custom || null;
+  }
+  if (preset === 'visual') {
+    const visual = typeof visualInstructions === 'string' ? visualInstructions.trim() : '';
+    return visual || getResponseStylePresetInstructions('visual');
   }
   if (!isResponseStylePreset(preset)) return null;
   return getResponseStylePresetInstructions(preset);
@@ -62,6 +69,7 @@ export const buildResponseStyleSettings = (settings: {
   responseStyleEnabled?: unknown;
   responseStylePreset?: unknown;
   responseStyleCustomInstructions?: unknown;
+  responseStyleVisualInstructions?: unknown;
 } | null): ResponseStyleSettings | null => {
   if (!settings) return null;
   const enabled = settings.responseStyleEnabled === true;
@@ -69,14 +77,19 @@ export const buildResponseStyleSettings = (settings: {
   const customInstructions = typeof settings.responseStyleCustomInstructions === 'string'
     ? settings.responseStyleCustomInstructions
     : '';
+  const visualInstructions = typeof settings.responseStyleVisualInstructions === 'string'
+    ? settings.responseStyleVisualInstructions
+    : '';
   return {
     enabled,
     preset,
     customInstructions,
+    visualInstructions,
     instruction: buildResponseStyleInstruction({
       enabled,
       preset,
       customInstructions,
+      visualInstructions,
     }),
   };
 };
@@ -91,6 +104,7 @@ export const fetchResponseStyleSettings = async (): Promise<ResponseStyleSetting
     responseStyleEnabled?: unknown;
     responseStylePreset?: unknown;
     responseStyleCustomInstructions?: unknown;
+    responseStyleVisualInstructions?: unknown;
   } | null;
   return buildResponseStyleSettings(settings);
 };

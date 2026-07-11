@@ -41,6 +41,7 @@ type BehaviorSettingsState = {
   responseStyleEnabled: boolean;
   responseStylePreset: ResponseStyleValue;
   responseStyleCustomInstructions: string;
+  responseStyleVisualInstructions: string;
 };
 
 const DEFAULT_BEHAVIOR_SETTINGS: BehaviorSettingsState = {
@@ -48,10 +49,17 @@ const DEFAULT_BEHAVIOR_SETTINGS: BehaviorSettingsState = {
   responseStyleEnabled: false,
   responseStylePreset: 'concise',
   responseStyleCustomInstructions: '',
+  responseStyleVisualInstructions: '',
 };
 
-const getResponseStylePreview = (preset: ResponseStyleValue, customInstructions: string) => {
-  return preset === 'custom' ? customInstructions : getResponseStylePresetInstructions(preset);
+const getResponseStylePreview = (
+  preset: ResponseStyleValue,
+  customInstructions: string,
+  visualInstructions: string,
+) => {
+  if (preset === 'custom') return customInstructions;
+  if (preset === 'visual') return visualInstructions || getResponseStylePresetInstructions('visual');
+  return getResponseStylePresetInstructions(preset);
 };
 
 const sanitizeResponseStylePreset = (value: unknown): ResponseStyleValue => {
@@ -91,6 +99,7 @@ export const BehaviorPage: React.FC = () => {
   const [responseStyleEnabled, setResponseStyleEnabled] = React.useState(DEFAULT_BEHAVIOR_SETTINGS.responseStyleEnabled);
   const [responseStylePreset, setResponseStylePreset] = React.useState<ResponseStyleValue>(DEFAULT_BEHAVIOR_SETTINGS.responseStylePreset);
   const [responseStyleCustomInstructions, setResponseStyleCustomInstructions] = React.useState(DEFAULT_BEHAVIOR_SETTINGS.responseStyleCustomInstructions);
+  const [responseStyleVisualInstructions, setResponseStyleVisualInstructions] = React.useState(DEFAULT_BEHAVIOR_SETTINGS.responseStyleVisualInstructions);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const [initialPrompt, setInitialPrompt] = React.useState('');
@@ -98,6 +107,7 @@ export const BehaviorPage: React.FC = () => {
     enabled: boolean;
     preset: ResponseStyleValue;
     custom: string;
+    visual: string;
   } | null>(null);
 
   React.useEffect(() => {
@@ -128,6 +138,9 @@ export const BehaviorPage: React.FC = () => {
             responseStyleCustomInstructions: typeof data.responseStyleCustomInstructions === 'string'
               ? data.responseStyleCustomInstructions
               : '',
+            responseStyleVisualInstructions: typeof data.responseStyleVisualInstructions === 'string'
+              ? data.responseStyleVisualInstructions
+              : '',
           };
           if (typeof data.globalBehaviorPrompt === 'string') {
             nextSettings = { ...nextSettings, prompt: data.globalBehaviorPrompt };
@@ -145,11 +158,13 @@ export const BehaviorPage: React.FC = () => {
         setResponseStyleEnabled(nextSettings.responseStyleEnabled);
         setResponseStylePreset(nextSettings.responseStylePreset);
         setResponseStyleCustomInstructions(nextSettings.responseStyleCustomInstructions);
+        setResponseStyleVisualInstructions(nextSettings.responseStyleVisualInstructions);
         setInitialPrompt(nextSettings.prompt);
         lastSavedResponseStyleRef.current = {
           enabled: nextSettings.responseStyleEnabled,
           preset: nextSettings.responseStylePreset,
           custom: nextSettings.responseStyleCustomInstructions,
+          visual: nextSettings.responseStyleVisualInstructions,
         };
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {
@@ -171,7 +186,8 @@ export const BehaviorPage: React.FC = () => {
       last &&
       last.enabled === responseStyleEnabled &&
       last.preset === responseStylePreset &&
-      last.custom === responseStyleCustomInstructions
+      last.custom === responseStyleCustomInstructions &&
+      last.visual === responseStyleVisualInstructions
     ) {
       return;
     }
@@ -180,6 +196,7 @@ export const BehaviorPage: React.FC = () => {
       enabled: responseStyleEnabled,
       preset: responseStylePreset,
       custom: responseStyleCustomInstructions,
+      visual: responseStyleVisualInstructions,
     };
 
     const timer = setTimeout(async () => {
@@ -188,6 +205,7 @@ export const BehaviorPage: React.FC = () => {
           responseStyleEnabled: next.enabled,
           responseStylePreset: next.preset,
           responseStyleCustomInstructions: next.custom,
+          responseStyleVisualInstructions: next.visual,
         }, t('settings.behavior.page.toast.saveFailed'));
         lastSavedResponseStyleRef.current = next;
       } catch (error) {
@@ -197,9 +215,17 @@ export const BehaviorPage: React.FC = () => {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [responseStyleEnabled, responseStylePreset, responseStyleCustomInstructions, isLoading, t]);
+  }, [responseStyleEnabled, responseStylePreset, responseStyleCustomInstructions, responseStyleVisualInstructions, isLoading, t]);
 
-  const responseStylePreview = getResponseStylePreview(responseStylePreset, responseStyleCustomInstructions);
+  const responseStylePreview = getResponseStylePreview(
+    responseStylePreset,
+    responseStyleCustomInstructions,
+    responseStyleVisualInstructions,
+  );
+  const canEditResponseStyleInstructions = responseStylePreset === 'custom' || responseStylePreset === 'visual';
+  const responseStyleInstructionsLabel = responseStylePreset === 'visual'
+    ? t('settings.behavior.page.responseStyle.visualInstructions')
+    : t('settings.behavior.page.responseStyle.customInstructions');
   const isPromptDirty = prompt !== initialPrompt;
 
   const handleSave = async () => {
@@ -345,13 +371,34 @@ export const BehaviorPage: React.FC = () => {
 
             <Textarea
               value={responseStylePreview}
-              onChange={(event) => setResponseStyleCustomInstructions(event.target.value)}
-              placeholder={t('settings.behavior.page.responseStyle.customPlaceholder')}
+              onChange={(event) => {
+                if (responseStylePreset === 'visual') {
+                  setResponseStyleVisualInstructions(event.target.value);
+                } else {
+                  setResponseStyleCustomInstructions(event.target.value);
+                }
+              }}
+              placeholder={responseStylePreset === 'visual'
+                ? t('settings.behavior.page.responseStyle.visualPlaceholder')
+                : t('settings.behavior.page.responseStyle.customPlaceholder')}
+              aria-label={responseStyleInstructionsLabel}
               rows={5}
-              disabled={isLoading || !responseStyleEnabled || responseStylePreset !== 'custom'}
+              disabled={isLoading || !responseStyleEnabled || !canEditResponseStyleInstructions}
               outerClassName="min-h-[120px]"
               className="w-full font-mono typography-meta bg-transparent"
             />
+            {responseStylePreset === 'visual' && responseStyleVisualInstructions.trim().length > 0 && (
+              <Button
+                type="button"
+                onClick={() => setResponseStyleVisualInstructions('')}
+                disabled={isLoading || !responseStyleEnabled}
+                size="xs"
+                variant="ghost"
+                className="!font-normal"
+              >
+                {t('settings.behavior.page.responseStyle.resetVisual')}
+              </Button>
+            )}
           </section>
         </div>
 

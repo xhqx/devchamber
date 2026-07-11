@@ -1195,6 +1195,9 @@ const sanitizeWebSettings = (payload: unknown): DesktopSettings | null => {
   if (typeof candidate.responseStyleCustomInstructions === 'string') {
     result.responseStyleCustomInstructions = candidate.responseStyleCustomInstructions;
   }
+  if (typeof candidate.responseStyleVisualInstructions === 'string') {
+    result.responseStyleVisualInstructions = candidate.responseStyleVisualInstructions;
+  }
   if (typeof candidate.dictationEnabled === 'boolean') {
     result.dictationEnabled = candidate.dictationEnabled;
   }

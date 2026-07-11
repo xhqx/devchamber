@@ -214,6 +214,18 @@ describe('settings helpers', () => {
     expect(response.collapsibleThinkingBlocks).toBe(true);
   });
 
+  it('accepts visual response style settings as persisted shared settings', () => {
+    const helpers = createTestHelpers();
+
+    expect(helpers.sanitizeSettingsUpdate({
+      responseStylePreset: 'visual',
+      responseStyleVisualInstructions: 'Use cards, then canvas.',
+    })).toEqual({
+      responseStylePreset: 'visual',
+      responseStyleVisualInstructions: 'Use cards, then canvas.',
+    });
+  });
+
   it('includes transient desktop LAN access runtime status in desktop settings response', () => {
     const helpers = createTestHelpers();
     const previousRuntime = process.env.OPENCHAMBER_RUNTIME;

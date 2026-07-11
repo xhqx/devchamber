@@ -31,6 +31,18 @@ describe('response style presets', () => {
 
     expect(settings?.enabled).toBe(true);
     expect(settings?.preset).toBe('visual');
+    expect(settings?.visualInstructions).toBe('');
     expect(settings?.instruction).toContain('high-effort visual canvas mode');
+  });
+
+  test('visual mode can use saved custom visual formatting instructions', () => {
+    const settings = buildResponseStyleSettings({
+      responseStyleEnabled: true,
+      responseStylePreset: 'visual',
+      responseStyleVisualInstructions: 'Use cards first, then canvas if needed.',
+    });
+
+    expect(settings?.visualInstructions).toBe('Use cards first, then canvas if needed.');
+    expect(settings?.instruction).toBe('Use cards first, then canvas if needed.');
   });
 });

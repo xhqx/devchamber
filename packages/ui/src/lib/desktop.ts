@@ -179,6 +179,7 @@ export type DesktopSettings = {
   responseStyleEnabled?: boolean;
   responseStylePreset?: 'concise' | 'detailed' | 'mentor' | 'pushback' | 'noFiller' | 'matchEnergy' | 'warmPeer' | 'visual' | 'custom';
   responseStyleCustomInstructions?: string;
+  responseStyleVisualInstructions?: string;
   forkFeatures?: ForkFeatureSettings;
   dictationEnabled?: boolean;
   sttProvider?: 'local' | 'openai-compatible';
