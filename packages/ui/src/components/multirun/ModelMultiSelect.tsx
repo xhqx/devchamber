@@ -43,7 +43,7 @@ const ModelChip: React.FC<{
   return (
     <div className={cn('flex items-center gap-1.5 px-2 rounded-md bg-interactive-selection/20 border border-border/30', CHIP_HEIGHT_CLASS)}>
       <ProviderLogo providerId={model.providerID} className="h-3.5 w-3.5" />
-      <span className="typography-meta font-medium truncate max-w-[140px]">
+      <span className="typography-meta font-medium truncate max-w-[min(140px,calc(100vw-8rem))]">
         {label}
       </span>
       <button
@@ -306,7 +306,7 @@ export const ModelMultiSelect: React.FC<ModelMultiSelectProps> = ({
               const variantValue = model.variant ?? DEFAULT_VARIANT_VALUE;
 
               return (
-                <div key={model.instanceId} className="flex items-center gap-2 min-w-0">
+                <div key={model.instanceId} className="flex min-w-0 flex-wrap items-center gap-2">
                   <ModelChip
                     model={model}
                     instanceIndex={instanceIndex}

@@ -66,6 +66,7 @@ import { OpenInAppButton } from '@/components/desktop/OpenInAppButton';
 import { forceKillTerminal } from '@/lib/terminalApi';
 import { useTerminalStore } from '@/stores/useTerminalStore';
 import { ProjectActionsButton } from '@/components/layout/ProjectActionsButton';
+import { ChatResponseViewToggle } from '@/components/chat/ChatResponseViewToggle';
 import { SessionSwitcherDropdown } from '@/components/session/SessionSwitcherDropdown';
 import { canUseElectronDesktopIPC, invokeDesktop, isDesktopLocalOriginActive, isDesktopShell, isVSCodeRuntime, startDesktopWindowDrag, type UpdateInfo } from '@/lib/desktop';
 import { desktopHostsGet, getDesktopHostApiUrl, locationMatchesHost, redactSensitiveUrl } from '@/lib/desktopHosts';
@@ -2085,6 +2086,12 @@ export const Header: React.FC<HeaderProps> = ({
         onOpenRemoteUpdate={openRemoteInstanceUpdate}
         timeFormatPreference={timeFormatPreference}
       />
+      {activeMainTab === 'chat' ? (
+        <ChatResponseViewToggle
+          className="app-region-no-drag h-8 w-8 rounded-md p-1.5"
+          iconClassName="h-5 w-5"
+        />
+      ) : null}
       <HeaderIconActionButton
         title={t('header.actions.terminalPanelWithShortcut', { shortcut: shortcutLabel('toggle_terminal') })}
         ariaLabel={t('header.actions.toggleTerminalPanelAria')}

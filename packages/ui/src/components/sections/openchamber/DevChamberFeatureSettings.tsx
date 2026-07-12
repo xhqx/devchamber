@@ -57,7 +57,7 @@ const ToggleRow: React.FC<{
   description: string;
   onChange: (checked: boolean) => void;
 }> = ({ checked, label, description, onChange }) => (
-  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3 hover:bg-interactive-hover">
+  <label className="flex min-w-0 cursor-pointer items-start gap-3 rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3 hover:bg-interactive-hover">
     <Checkbox checked={checked} onChange={onChange} ariaLabel={label} />
     <span className="min-w-0 space-y-0.5">
       <span className="block typography-ui-label font-medium text-foreground">{label}</span>
@@ -96,13 +96,13 @@ const FallbackModelPicker: React.FC<{
   }, [chain.models, onModelsChange]);
 
   return (
-    <div className="space-y-3 rounded-lg border border-border/40 bg-[var(--surface-background)] p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="space-y-0.5">
+    <div className="min-w-0 space-y-3 rounded-lg border border-border/40 bg-[var(--surface-background)] p-3">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 space-y-0.5">
           <h6 className="typography-ui-label font-medium text-foreground">{PURPOSE_LABELS[chain.purpose]}</h6>
           <p className="typography-meta text-muted-foreground">Pick fallback models from configured providers, in retry order.</p>
         </div>
-        <label className="flex items-center gap-2 typography-meta text-muted-foreground">
+        <label className="flex min-w-0 items-center gap-2 typography-meta text-muted-foreground sm:shrink-0">
           Attempts
           <Input
             type="number"
@@ -113,19 +113,22 @@ const FallbackModelPicker: React.FC<{
               const value = Number(event.target.value);
               if (Number.isFinite(value)) onMaxAttemptsChange(value);
             }}
-            className="h-8 w-16"
+            className="h-8 w-16 shrink-0"
           />
         </label>
       </div>
-      <ModelMultiSelect
-        selectedModels={selectedModels.map((model) => ({ ...model, instanceId: model.instanceId || generateInstanceId() }))}
-        onAdd={handleAdd}
-        onRemove={handleRemove}
-        onUpdate={handleUpdate}
-        addButtonLabel="Add fallback model"
-        dropdownSide="bottom"
-        dropdownClassName="!z-[70]"
-      />
+      <div className="min-w-0 overflow-hidden">
+        <ModelMultiSelect
+          selectedModels={selectedModels.map((model) => ({ ...model, instanceId: model.instanceId || generateInstanceId() }))}
+          onAdd={handleAdd}
+          onRemove={handleRemove}
+          onUpdate={handleUpdate}
+          addButtonLabel="Add fallback model"
+          dropdownSide="bottom"
+          dropdownClassName="!z-[70]"
+          addButtonClassName="max-w-full"
+        />
+      </div>
       <div className="flex flex-wrap gap-2">
         {DEFAULT_MODEL_FALLBACK_RETRY_ON.map((reason) => (
           <label key={reason} className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border/30 px-2 py-1 typography-meta text-muted-foreground">
@@ -208,13 +211,13 @@ export const DevChamberFeatureSettings: React.FC = () => {
   };
 
   return (
-    <div data-settings-item="devchamber.features" className="space-y-4">
+    <div data-settings-item="devchamber.features" className="min-w-0 space-y-4 overflow-hidden">
       <SectionHeader
         title="DevChamber features"
         description="Control fork-only agentic IDE behavior from the UI instead of editing raw configuration."
       />
 
-      <section className="space-y-3 rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
+      <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
           <h4 className="typography-ui-label font-medium text-foreground">Agents and models</h4>
           <p className="typography-meta text-muted-foreground">Choose the autocomplete agent and keep model fallback with agent behavior.</p>
@@ -311,7 +314,7 @@ export const DevChamberFeatureSettings: React.FC = () => {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
+      <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
           <h4 className="typography-ui-label font-medium text-foreground">Workspace features</h4>
           <p className="typography-meta text-muted-foreground">Separate planning, repo, and documentation spaces.</p>
@@ -348,7 +351,7 @@ export const DevChamberFeatureSettings: React.FC = () => {
         />
       </section>
 
-      <section className="space-y-3 rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
+      <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
           <h4 className="typography-ui-label font-medium text-foreground">Commit generation</h4>
           <p className="typography-meta text-muted-foreground">Tune the generated commit summary budget and variants.</p>
@@ -378,12 +381,12 @@ export const DevChamberFeatureSettings: React.FC = () => {
                 commitGeneration: { ...current.commitGeneration, maxFiles: Number.isFinite(value) ? value : current.commitGeneration.maxFiles },
               }));
             }}
-            className="h-8 w-32"
+            className="h-8 w-full sm:w-32"
           />
         </label>
       </section>
 
-      <section className="space-y-3 rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
+      <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
           <h4 className="typography-ui-label font-medium text-foreground">Auto-approve</h4>
           <p className="typography-meta text-muted-foreground">Configure the guarded automatic approval behavior for selected tools.</p>
@@ -399,7 +402,7 @@ export const DevChamberFeatureSettings: React.FC = () => {
           />
           Enable auto-approve
         </label>
-        <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
+        <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,8rem)_minmax(0,1fr)]">
           <label className="block space-y-1">
             <span className="typography-meta text-muted-foreground">Timeout, sec</span>
             <Input
@@ -414,7 +417,7 @@ export const DevChamberFeatureSettings: React.FC = () => {
                   autoApprove: { ...current.autoApprove, timeoutSeconds: Number.isFinite(value) ? value : current.autoApprove.timeoutSeconds },
                 }));
               }}
-              className="h-8"
+              className="h-8 w-full"
             />
           </label>
           <label className="block space-y-1">
@@ -424,7 +427,7 @@ export const DevChamberFeatureSettings: React.FC = () => {
               onChange={(event) => setAllowedToolsDraft(event.target.value)}
               onBlur={handleAllowedToolsBlur}
               placeholder="bash, edit, write"
-              className="h-8 font-mono text-xs"
+              className="h-8 w-full min-w-0 font-mono text-xs"
             />
           </label>
         </div>

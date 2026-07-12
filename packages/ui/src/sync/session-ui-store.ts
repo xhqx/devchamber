@@ -121,7 +121,10 @@ export function routeMessage(params: {
         .filter((text): text is string => Boolean(text))
         .join("\n\n")
       const commandArgumentsWithReminders = commandTextReminders
-        ? [commandArguments, commandTextReminders].filter(Boolean).join("\n\n")
+        ? [
+          commandArguments,
+          `Formatting requirements for this slash/plugin command:\n${commandTextReminders}`,
+        ].filter(Boolean).join("\n\n")
         : commandArguments
 
       return optimisticSend({

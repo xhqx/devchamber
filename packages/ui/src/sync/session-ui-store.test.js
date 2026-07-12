@@ -385,7 +385,7 @@ describe('routeMessage skill invocation', () => {
 
     expect(sendCommandCalls).toHaveLength(1);
     expect(sendCommandCalls[0].command).toBe('omo');
-    expect(sendCommandCalls[0].arguments).toBe('design a dashboard\n\n<system-reminder>Use visual format.</system-reminder>');
+    expect(sendCommandCalls[0].arguments).toBe('design a dashboard\n\nFormatting requirements for this slash/plugin command:\n<system-reminder>Use visual format.</system-reminder>');
   });
 
   test('sends an unknown slash token as a plain message', async () => {

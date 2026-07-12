@@ -10,7 +10,6 @@ import { useConfigStore } from '@/stores/useConfigStore';
 import { resolveGlobalSessionDirectory, useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { ContextUsageDisplay } from '@/components/ui/ContextUsageDisplay';
 import { McpDropdown } from '@/components/mcp/McpDropdown';
-import { ChatResponseViewToggle } from '@/components/chat/ChatResponseViewToggle';
 import { ArchiveAllDropdown } from '@/components/session/ArchiveAllDropdown';
 import { SessionSwitcherDropdown } from '@/components/session/SessionSwitcherDropdown';
 import { SessionsTabTitle } from '@/components/session/SessionsTabTitle';
@@ -520,7 +519,6 @@ export const VSCodeLayout: React.FC = () => {
           <VSCodeHeader
             title={activeSessionTitle || t('vscodeLayout.title.chat')}
             showMcp
-            showResponseViewToggle
             showContextUsage
             showRateLimits
             enableSessionSwitcher
@@ -571,7 +569,6 @@ export const VSCodeLayout: React.FC = () => {
             <VSCodeHeader
               title={chatTitle}
               showMcp
-              showResponseViewToggle
               showContextUsage
               showRateLimits
               enableSessionSwitcher
@@ -610,7 +607,6 @@ export const VSCodeLayout: React.FC = () => {
               showBack
               onBack={handleBackToSessions}
               showMcp
-              showResponseViewToggle
               showContextUsage
               showRateLimits
               enableSessionSwitcher
@@ -637,14 +633,13 @@ interface VSCodeHeaderProps {
   onSettings?: () => void;
   onAgentManager?: () => void;
   showMcp?: boolean;
-  showResponseViewToggle?: boolean;
   showContextUsage?: boolean;
   showRateLimits?: boolean;
   enableSessionSwitcher?: boolean;
 }
 
 
-const VSCodeHeader: React.FC<VSCodeHeaderProps> = ({ title, showBack, onBack, onArchiveAll, onNewSession, onSettings, onAgentManager, showMcp, showResponseViewToggle, showContextUsage, showRateLimits, enableSessionSwitcher }) => {
+const VSCodeHeader: React.FC<VSCodeHeaderProps> = ({ title, showBack, onBack, onArchiveAll, onNewSession, onSettings, onAgentManager, showMcp, showContextUsage, showRateLimits, enableSessionSwitcher }) => {
   const { t } = useI18n();
   const showArchivedSessions = useSessionDisplayStore((state) => state.showArchivedSessions);
   const toggleArchivedSessions = useSessionDisplayStore((state) => state.toggleArchivedSessions);
@@ -859,7 +854,6 @@ const VSCodeHeader: React.FC<VSCodeHeaderProps> = ({ title, showBack, onBack, on
           <Icon name="robot-2" className="h-5 w-5" />
         </button>
       )}
-      {showResponseViewToggle && <ChatResponseViewToggle />}
       {showMcp && (
         <McpDropdown
           headerIconButtonClass="inline-flex h-9 w-9 items-center justify-center p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
