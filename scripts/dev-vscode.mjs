@@ -11,7 +11,22 @@ const repoRoot = path.resolve(__dirname, '..');
 const extensionPath = path.join(repoRoot, 'packages', 'vscode');
 const useDetachedChildren = process.platform === 'darwin' || process.platform === 'linux';
 
-const codeBin = process.env.OPENCHAMBER_VSCODE_BIN || 'code';
+const resolveCodeBin = () => {
+  if (process.env.OPENCHAMBER_VSCODE_BIN) {
+    return process.env.OPENCHAMBER_VSCODE_BIN;
+  }
+
+  if (process.platform === 'darwin') {
+    const macAppBin = '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code';
+    if (fs.existsSync(macAppBin)) {
+      return macAppBin;
+    }
+  }
+
+  return 'code';
+};
+
+const codeBin = resolveCodeBin();
 const workspaceArg = process.argv[2] || process.env.OPENCHAMBER_VSCODE_DEV_WORKSPACE || repoRoot;
 const workspacePath = path.resolve(workspaceArg);
 
