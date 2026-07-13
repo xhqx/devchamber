@@ -4,6 +4,7 @@ import type { PermissionRequest } from '@/types/permission';
 import type { QuestionRequest } from '@/types/question';
 
 import { ChatInput } from './ChatInput';
+import { ChatResponseViewToggle } from './ChatResponseViewToggle';
 import { DraftPresetChips } from './DraftPresetChips';
 import { useInputStore } from '@/sync/input-store';
 import { useUIStore } from '@/stores/useUIStore';
@@ -348,6 +349,12 @@ const ReadOnlyPromptBanner: React.FC = () => {
         </div>
     );
 };
+
+const ChatResponseViewToggleCorner: React.FC = () => (
+    <div className="pointer-events-none absolute right-3 top-3 z-30 flex justify-end">
+        <ChatResponseViewToggle className="pointer-events-auto rounded-full border border-border/60 bg-background/85 shadow-sm backdrop-blur" />
+    </div>
+);
 
 const getProjectDisplayLabel = (project: { label?: string; path: string }): string => {
     const label = project.label?.trim();
@@ -798,7 +805,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ autoOpenDraft = tr
 			return <div className="flex h-full flex-col bg-background" />;
 		}
 		return (
-			<div className="flex flex-col h-full bg-background">
+			<div className="relative flex flex-col h-full bg-background">
+				<ChatResponseViewToggleCorner />
 				<ChatEmptyState />
 			</div>
 		);
@@ -810,6 +818,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ autoOpenDraft = tr
 			// the fullscreen composer's position:fixed visual-viewport pinning in
 			// mobile browsers (see ChatInput's composerFormRef effect).
 			<div className="relative flex h-full flex-col bg-background">
+				<ChatResponseViewToggleCorner />
 				{useCompactDraftLayout && !isDesktopExpandedInput ? (
 					<div className="oc-draft-center flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
 						<h1 className="text-balance text-3xl font-normal tracking-tight text-foreground">
@@ -850,6 +859,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ autoOpenDraft = tr
 		return (
 			<div className="relative flex flex-col h-full bg-background">
 				{returnToParentButton}
+				<ChatResponseViewToggleCorner />
 				<div
 					className={cn(
 						'relative min-h-0',
@@ -908,6 +918,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ autoOpenDraft = tr
 			// draft branch above.
 			<div className="relative flex flex-col h-full bg-background">
 				{returnToParentButton}
+				<ChatResponseViewToggleCorner />
 				<div
 					className={cn(
                         'relative min-h-0',
@@ -940,6 +951,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ autoOpenDraft = tr
 	return (
 		<div className="relative flex flex-col h-full bg-background">
 			{returnToParentButton}
+			<ChatResponseViewToggleCorner />
 			<ChatViewport
 				key={currentSessionId}
 				currentSessionId={currentSessionId}
