@@ -3,6 +3,8 @@ import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { SessionSidebar } from '@/components/session/SessionSidebar';
 import { SessionDialogs } from '@/components/session/SessionDialogs';
 import { ChatView } from '@/components/views/ChatView';
+import { ChatResponseViewToggle } from '@/components/chat/ChatResponseViewToggle';
+import { ProjectContextPanel } from '@/components/layout/RightSidebarTabs';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useViewportStore } from '@/sync/viewport-store';
 import { useSessions, useDirectorySync, useSessionMessages, useSessionMessagesResolved } from '@/sync/sync-context';
@@ -43,6 +45,7 @@ import type { SessionContextUsage } from '@/stores/types/sessionTypes';
 import { useUIStore, type TimeFormatPreference } from '@/stores/useUIStore';
 
 const SettingsView = lazyWithChunkRecovery(() => import('@/components/views/SettingsView').then(m => ({ default: m.SettingsView })));
+const RepoMapView = lazyWithChunkRecovery(() => import('@/components/views/RepoMapView').then(m => ({ default: m.RepoMapView })));
 
 const formatTime = (timestamp: number | null, timeFormatPreference: TimeFormatPreference) => {
   if (!timestamp) return '-';
@@ -71,7 +74,7 @@ const normalizePath = (value?: string | null): string | null => {
   return replaced.length > 1 ? replaced.replace(/\/+$/, '') : replaced;
 };
 
-type VSCodeView = 'sessions' | 'chat' | 'settings';
+type VSCodeView = 'sessions' | 'chat' | 'settings' | 'repo-map' | 'docs';
 
 export const VSCodeLayout: React.FC = () => {
   const { t } = useI18n();
@@ -242,6 +245,26 @@ export const VSCodeLayout: React.FC = () => {
     setCurrentView('sessions');
   }, []);
 
+  const handleBackToChat = React.useCallback(() => {
+    setCurrentView('chat');
+  }, []);
+
+  const handleOpenAgentManager = React.useCallback(() => {
+    const vscodeApi = runtimeApis.vscode;
+    if (!vscodeApi) {
+      return;
+    }
+    void vscodeApi.openAgentManager();
+  }, [runtimeApis.vscode]);
+
+  const handleOpenProjectMap = React.useCallback(() => {
+    setCurrentView('repo-map');
+  }, []);
+
+  const handleOpenDocs = React.useCallback(() => {
+    setCurrentView('docs');
+  }, []);
+
   const isSessionInActiveWorkspace = React.useCallback((session: Session): boolean => {
     if (!activeWorkspacePath) {
       return false;
@@ -353,6 +376,10 @@ export const VSCodeLayout: React.FC = () => {
         setCurrentView('chat');
       } else if (view === 'sessions') {
         setCurrentView('sessions');
+      } else if (view === 'repo-map') {
+        setCurrentView('repo-map');
+      } else if (view === 'docs') {
+        setCurrentView('docs');
       }
     };
     window.addEventListener('openchamber:navigate', handler as EventListener);
@@ -518,6 +545,9 @@ export const VSCodeLayout: React.FC = () => {
         <div className="flex flex-col h-full">
           <VSCodeHeader
             title={activeSessionTitle || t('vscodeLayout.title.chat')}
+            onAgentManager={handleOpenAgentManager}
+            onProjectMap={handleOpenProjectMap}
+            onDocs={handleOpenDocs}
             showMcp
             showContextUsage
             showRateLimits
@@ -537,6 +567,44 @@ export const VSCodeLayout: React.FC = () => {
             forceMobile={usesMobileLayout}
           />
         </React.Suspense>
+      ) : currentView === 'repo-map' ? (
+        <div className="flex flex-col h-full">
+          <VSCodeHeader
+            title="Project map"
+            showBack
+            onBack={handleBackToChat}
+            onAgentManager={handleOpenAgentManager}
+            onProjectMap={handleOpenProjectMap}
+            onDocs={handleOpenDocs}
+            showMcp
+            showContextUsage
+            showRateLimits
+            enableSessionSwitcher
+          />
+          <div className="flex-1 overflow-hidden">
+            <React.Suspense fallback={null}>
+              <RepoMapView />
+            </React.Suspense>
+          </div>
+        </div>
+      ) : currentView === 'docs' ? (
+        <div className="flex flex-col h-full">
+          <VSCodeHeader
+            title="Docs"
+            showBack
+            onBack={handleBackToChat}
+            onAgentManager={handleOpenAgentManager}
+            onProjectMap={handleOpenProjectMap}
+            onDocs={handleOpenDocs}
+            showMcp
+            showContextUsage
+            showRateLimits
+            enableSessionSwitcher
+          />
+          <div className="flex-1 overflow-hidden">
+            <ProjectContextPanel />
+          </div>
+        </div>
       ) : usesExpandedLayout ? (
         // Expanded layout: sessions sidebar + chat side by side
         <div className="flex h-full">
@@ -568,6 +636,9 @@ export const VSCodeLayout: React.FC = () => {
           <div className="flex-1 flex flex-col min-w-0">
             <VSCodeHeader
               title={chatTitle}
+              onAgentManager={handleOpenAgentManager}
+              onProjectMap={handleOpenProjectMap}
+              onDocs={handleOpenDocs}
               showMcp
               showContextUsage
               showRateLimits
@@ -606,6 +677,9 @@ export const VSCodeLayout: React.FC = () => {
               title={chatTitle}
               showBack
               onBack={handleBackToSessions}
+              onAgentManager={handleOpenAgentManager}
+              onProjectMap={handleOpenProjectMap}
+              onDocs={handleOpenDocs}
               showMcp
               showContextUsage
               showRateLimits
@@ -632,6 +706,8 @@ interface VSCodeHeaderProps {
   onNewSession?: () => void;
   onSettings?: () => void;
   onAgentManager?: () => void;
+  onProjectMap?: () => void;
+  onDocs?: () => void;
   showMcp?: boolean;
   showContextUsage?: boolean;
   showRateLimits?: boolean;
@@ -639,7 +715,7 @@ interface VSCodeHeaderProps {
 }
 
 
-const VSCodeHeader: React.FC<VSCodeHeaderProps> = ({ title, showBack, onBack, onArchiveAll, onNewSession, onSettings, onAgentManager, showMcp, showContextUsage, showRateLimits, enableSessionSwitcher }) => {
+const VSCodeHeader: React.FC<VSCodeHeaderProps> = ({ title, showBack, onBack, onArchiveAll, onNewSession, onSettings, onAgentManager, onProjectMap, onDocs, showMcp, showContextUsage, showRateLimits, enableSessionSwitcher }) => {
   const { t } = useI18n();
   const showArchivedSessions = useSessionDisplayStore((state) => state.showArchivedSessions);
   const toggleArchivedSessions = useSessionDisplayStore((state) => state.toggleArchivedSessions);
@@ -850,14 +926,40 @@ const VSCodeHeader: React.FC<VSCodeHeaderProps> = ({ title, showBack, onBack, on
           onClick={onAgentManager}
           className="inline-flex h-9 w-9 items-center justify-center p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           aria-label={t('vscodeLayout.actions.openAgentManagerAria')}
+          title={t('vscodeLayout.actions.openAgentManagerAria')}
         >
           <Icon name="robot-2" className="h-5 w-5" />
+        </button>
+      )}
+      {onProjectMap && (
+        <button
+          type="button"
+          onClick={onProjectMap}
+          className="inline-flex h-9 w-9 items-center justify-center p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="Open project map"
+          title="Project map"
+        >
+          <Icon name="git-branch" className="h-5 w-5" />
+        </button>
+      )}
+      {onDocs && (
+        <button
+          type="button"
+          onClick={onDocs}
+          className="inline-flex h-9 w-9 items-center justify-center p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="Open docs"
+          title="Docs"
+        >
+          <Icon name="book-open" className="h-5 w-5" />
         </button>
       )}
       {showMcp && (
         <McpDropdown
           headerIconButtonClass="inline-flex h-9 w-9 items-center justify-center p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
+      )}
+      {showMcp && (
+        <ChatResponseViewToggle className="inline-flex h-9 w-9 items-center justify-center p-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />
       )}
       {showRateLimits && (
         <DropdownMenu
