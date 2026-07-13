@@ -80,6 +80,24 @@ const waitForPort = async (host, port, timeoutMs, shouldAbort) => {
   return false;
 };
 
+const waitForWebviewEntry = async (serverUrl, timeoutMs, shouldAbort) => {
+  const startedAt = Date.now();
+  const entryUrl = `${serverUrl.replace(/\/$/, '')}/main.tsx`;
+  while (Date.now() - startedAt < timeoutMs) {
+    if (shouldAbort()) return false;
+    try {
+      const response = await fetch(entryUrl, { method: 'GET' });
+      const contentType = response.headers.get('content-type') || '';
+      if (response.ok && contentType.includes('javascript')) {
+        return true;
+      }
+    } catch {
+    }
+    await sleep(300);
+  }
+  return false;
+};
+
 const findAvailablePort = async (host, preferredPort, maxAttempts = 20) => {
   for (let offset = 0; offset < maxAttempts; offset += 1) {
     const port = preferredPort + offset;
@@ -209,7 +227,12 @@ console.log(`[dev:vscode] Waiting for webview dev server at ${devServerHost}:${d
 
 const ready = await waitForPort(devServerHost, devServerPort, 30000, () => shuttingDown || dev.exitCode !== null || dev.signalCode !== null);
 if (!ready) {
-  console.warn('[dev:vscode] Webview dev server not ready in time, opening extension host anyway');
+  console.warn('[dev:vscode] Webview dev server port not ready in time, opening extension host anyway');
+} else {
+  const entryReady = await waitForWebviewEntry(devServerUrl, 30000, () => shuttingDown || dev.exitCode !== null || dev.signalCode !== null);
+  if (!entryReady) {
+    console.warn(`[dev:vscode] Webview dev server answered, but ${devServerUrl}/main.tsx was not ready as JavaScript in time`);
+  }
 }
 
 const host = run(
