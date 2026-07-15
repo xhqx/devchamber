@@ -1230,7 +1230,7 @@ let _settingsCache: { value: DesktopSettings | null; at: number } | null = null;
 let _settingsInflight: Promise<DesktopSettings | null> | null = null;
 const SETTINGS_CACHE_TTL = 2_000; // 2 seconds — covers the startup burst
 
-const fetchWebSettings = async (): Promise<DesktopSettings | null> => {
+export const loadDesktopSettingsCached = async (): Promise<DesktopSettings | null> => {
   // Return cached if fresh
   if (_settingsCache && Date.now() - _settingsCache.at < SETTINGS_CACHE_TTL) {
     return _settingsCache.value;
@@ -1332,7 +1332,7 @@ export const syncDesktopSettings = async (): Promise<void> => {
   };
 
   try {
-    const webSettings = await fetchWebSettings();
+    const webSettings = await loadDesktopSettingsCached();
     if (webSettings) {
       await applySettings(webSettings);
     }

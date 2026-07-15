@@ -693,7 +693,7 @@ export const AgentsPage: React.FC = () => {
         </div>
 
         <div className="mb-8 border-t border-border/40 pt-6">
-          <DevChamberFeatureSettings />
+          <DevChamberFeatureSettings sections={['agents', 'autoApprove']} />
         </div>
 
         {/* Identity & Role */}

@@ -66,11 +66,19 @@ export const normalizeAutoApprovePolicy = (policy: Partial<AutoApprovePolicy> = 
     : DEFAULT_AUTO_APPROVE_POLICY.requireWorkspacePath,
 });
 
+const hasWildcard = (patterns: string[]): boolean => (
+  patterns.some((pattern) => pattern.trim() === '*' || pattern.trim().toLowerCase() === 'all')
+);
+
 const matchesAnyPattern = (value: string, patterns: string[]): boolean => patterns.some((pattern) => {
+  const trimmedPattern = pattern.trim();
+  if (trimmedPattern === '*' || trimmedPattern.toLowerCase() === 'all') {
+    return true;
+  }
   try {
-    return new RegExp(pattern, 'i').test(value);
+    return new RegExp(trimmedPattern, 'i').test(value);
   } catch {
-    return value.toLowerCase().includes(pattern.toLowerCase());
+    return value.toLowerCase().includes(trimmedPattern.toLowerCase());
   }
 });
 
@@ -102,7 +110,7 @@ export const evaluateAutoApprovePolicy = (
     return { approved: false, reason: 'tool is denied', timeoutSeconds: policy.timeoutSeconds };
   }
 
-  if (!policy.allowedTools.includes(request.toolName)) {
+  if (!hasWildcard(policy.allowedTools) && !policy.allowedTools.includes(request.toolName)) {
     return { approved: false, reason: 'tool is not allowed', timeoutSeconds: policy.timeoutSeconds };
   }
 

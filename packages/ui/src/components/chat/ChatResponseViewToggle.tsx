@@ -2,8 +2,9 @@ import React from 'react';
 import { Icon } from '@/components/icon/Icon';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
-import { runtimeFetch } from '@/lib/runtime-fetch';
-import { invalidateSettingsCache } from '@/lib/persistence';
+import { fetchResponseStyleSettings } from '@/lib/responseStyle';
+import { updateDesktopSettings } from '@/lib/persistence';
+import { toast } from '@/components/ui/toast';
 
 type ChatResponseViewMode = 'default' | 'visual';
 
@@ -13,21 +14,9 @@ type ChatResponseViewToggleProps = {
 };
 
 const saveChatResponseViewMode = async (mode: ChatResponseViewMode): Promise<void> => {
-  const response = await runtimeFetch('/api/config/settings', {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(mode === 'visual'
-      ? { responseStyleEnabled: true, responseStylePreset: 'visual' }
-      : { responseStyleEnabled: false, responseStylePreset: 'visual' }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to save response view mode');
-  }
-  invalidateSettingsCache();
+  await updateDesktopSettings(mode === 'visual'
+    ? { responseStyleEnabled: true, responseStylePreset: 'visual' }
+    : { responseStyleEnabled: false, responseStylePreset: 'visual' });
 };
 
 export const ChatResponseViewToggle = React.memo<ChatResponseViewToggleProps>(({ className, iconClassName }) => {
@@ -36,30 +25,22 @@ export const ChatResponseViewToggle = React.memo<ChatResponseViewToggleProps>(({
   const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
-    const abort = new AbortController();
+    let disposed = false;
     const load = async () => {
       try {
-        const response = await runtimeFetch('/api/config/settings', {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-          signal: abort.signal,
-        });
-        if (!response.ok) return;
-        const settings = await response.json().catch(() => null) as {
-          responseStyleEnabled?: unknown;
-          responseStylePreset?: unknown;
-        } | null;
-        setMode(settings?.responseStyleEnabled === true && settings.responseStylePreset === 'visual'
+        const settings = await fetchResponseStyleSettings();
+        if (disposed) return;
+        setMode(settings?.enabled === true && settings.preset === 'visual'
           ? 'visual'
           : 'default');
       } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
+        if (!disposed) {
           console.warn('[ChatResponseViewToggle] Failed to load response view mode:', error);
         }
       }
     };
     void load();
-    return () => abort.abort();
+    return () => { disposed = true; };
   }, []);
 
   const updateMode = React.useCallback(async (nextMode: ChatResponseViewMode) => {
@@ -69,8 +50,10 @@ export const ChatResponseViewToggle = React.memo<ChatResponseViewToggleProps>(({
     setIsSaving(true);
     try {
       await saveChatResponseViewMode(nextMode);
+      toast.success(nextMode === 'visual' ? 'Visual response mode enabled' : 'Visual response mode disabled');
     } catch (error) {
       console.warn('[ChatResponseViewToggle] Failed to save response view mode:', error);
+      toast.error('Failed to save response mode');
       setMode(previousMode);
     } finally {
       setIsSaving(false);

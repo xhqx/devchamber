@@ -7,6 +7,7 @@ import type { RepoLanguage } from '@/lib/repoIndex/schema';
 import type { RepoMapTreeNode, RepoMapViewModel } from '@/lib/repoIndex/viewModel';
 import { buildRepoMapViewModel, filterRepoMapSymbols, filterRepoMapTree } from '@/lib/repoIndex/viewModel';
 import { cn } from '@/lib/utils';
+import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 
 const formatBytes = (value: number): string => {
@@ -357,7 +358,8 @@ const RepoMapContent: React.FC<RepoMapContentProps> = ({
 export const RepoMapView: React.FC = () => {
   const { files, editor } = useRuntimeAPIs();
   const activeProject = useProjectsStore((state) => state.getActiveProject());
-  const projectRoot = activeProject?.path ?? '';
+  const currentDirectory = useDirectoryStore((state) => state.currentDirectory);
+  const projectRoot = activeProject?.path ?? currentDirectory ?? '';
   const [viewModel, setViewModel] = React.useState<RepoMapViewModel | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

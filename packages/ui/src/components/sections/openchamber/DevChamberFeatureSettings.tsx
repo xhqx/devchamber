@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ModelMultiSelect, generateInstanceId, type ModelSelectionWithId } from '@/components/multirun/ModelMultiSelect';
 import { toast } from '@/components/ui';
-import { Icon } from '@/components/icon/Icon';
 import { updateDesktopSettings } from '@/lib/persistence';
 import type { ForkFeatureSettings } from '@/lib/forkFeatures';
 import { normalizeForkFeatureSettings } from '@/lib/forkFeatures';
@@ -41,16 +40,6 @@ const RETRY_REASON_LABELS: Record<ModelFallbackRetryReason, string> = {
 
 const modelKey = (model: Pick<ModelRef, 'providerID' | 'modelID'>): string => `${model.providerID}/${model.modelID}`;
 
-const SectionHeader: React.FC<{ title: string; description: string }> = ({ title, description }) => (
-  <div className="space-y-1 px-1">
-    <div className="flex items-center gap-2">
-      <Icon name="code-box" className="h-4 w-4 text-muted-foreground" />
-      <h3 className="typography-ui-header font-medium text-foreground">{title}</h3>
-    </div>
-    <p className="typography-meta text-muted-foreground">{description}</p>
-  </div>
-);
-
 const ToggleRow: React.FC<{
   checked: boolean;
   label: string;
@@ -65,6 +54,12 @@ const ToggleRow: React.FC<{
     </span>
   </label>
 );
+
+type DevChamberFeatureSettingsSection = 'agents' | 'workspace' | 'commit' | 'autoApprove';
+
+type DevChamberFeatureSettingsProps = {
+  sections?: DevChamberFeatureSettingsSection[];
+};
 
 const FallbackModelPicker: React.FC<{
   chain: ModelFallbackChain;
@@ -145,7 +140,8 @@ const FallbackModelPicker: React.FC<{
   );
 };
 
-export const DevChamberFeatureSettings: React.FC = () => {
+export const DevChamberFeatureSettings: React.FC<DevChamberFeatureSettingsProps> = ({ sections }) => {
+  const visibleSections = React.useMemo(() => new Set<DevChamberFeatureSettingsSection>(sections ?? ['agents', 'workspace', 'commit', 'autoApprove']), [sections]);
   const settingsForkFeatures = useConfigStore((state) => state.settingsForkFeatures);
   const setSettingsForkFeatures = useConfigStore((state) => state.setSettingsForkFeatures);
   const agentList = useConfigStore((state) => state.agents);
@@ -212,11 +208,7 @@ export const DevChamberFeatureSettings: React.FC = () => {
 
   return (
     <div data-settings-item="devchamber.features" className="min-w-0 space-y-4 overflow-hidden">
-      <SectionHeader
-        title="DevChamber features"
-        description="Control fork-only agentic IDE behavior from the UI instead of editing raw configuration."
-      />
-
+      {visibleSections.has('agents') && (
       <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
           <h4 className="typography-ui-label font-medium text-foreground">Agents and models</h4>
@@ -313,7 +305,9 @@ export const DevChamberFeatureSettings: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
 
+      {visibleSections.has('workspace') && (
       <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
           <h4 className="typography-ui-label font-medium text-foreground">Workspace features</h4>
@@ -350,7 +344,9 @@ export const DevChamberFeatureSettings: React.FC = () => {
           }))}
         />
       </section>
+      )}
 
+      {visibleSections.has('commit') && (
       <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
           <h4 className="typography-ui-label font-medium text-foreground">Commit generation</h4>
@@ -385,7 +381,9 @@ export const DevChamberFeatureSettings: React.FC = () => {
           />
         </label>
       </section>
+      )}
 
+      {visibleSections.has('autoApprove') && (
       <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
           <h4 className="typography-ui-label font-medium text-foreground">Auto-approve</h4>
@@ -421,17 +419,18 @@ export const DevChamberFeatureSettings: React.FC = () => {
             />
           </label>
           <label className="block space-y-1">
-            <span className="typography-meta text-muted-foreground">Allowed tools, comma-separated</span>
+            <span className="typography-meta text-muted-foreground">Allowed tools, comma-separated (* for all)</span>
             <Input
               value={allowedToolsDraft}
               onChange={(event) => setAllowedToolsDraft(event.target.value)}
               onBlur={handleAllowedToolsBlur}
-              placeholder="bash, edit, write"
+              placeholder="*, bash, edit, write"
               className="h-8 w-full min-w-0 font-mono text-xs"
             />
           </label>
         </div>
       </section>
+      )}
 
     </div>
   );

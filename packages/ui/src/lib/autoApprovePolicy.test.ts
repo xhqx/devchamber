@@ -50,6 +50,36 @@ describe('autoApprovePolicy', () => {
     expect(decision.reason).toContain('deny pattern');
   });
 
+  test('allowed tool wildcard approves any tool name', () => {
+    const decision = evaluateAutoApprovePolicy({
+      ...basePolicy,
+      allowedTools: ['*'],
+      allowedCommandPatterns: [String.raw`^git status`],
+    }, {
+      toolName: 'edit',
+      command: 'git status',
+      cwd: '/workspace',
+      workspacePath: '/workspace',
+    });
+
+    expect(decision.approved).toBe(true);
+  });
+
+  test('allowed tool all alias approves any tool name', () => {
+    const decision = evaluateAutoApprovePolicy({
+      ...basePolicy,
+      allowedTools: ['all'],
+      allowedCommandPatterns: [String.raw`^git status`],
+    }, {
+      toolName: 'webfetch',
+      command: 'git status',
+      cwd: '/workspace',
+      workspacePath: '/workspace',
+    });
+
+    expect(decision.approved).toBe(true);
+  });
+
   test('timeout clamps 5-600 seconds', () => {
     expect(normalizeAutoApprovePolicy({ timeoutSeconds: 1 }).timeoutSeconds).toBe(5);
     expect(normalizeAutoApprovePolicy({ timeoutSeconds: 1000 }).timeoutSeconds).toBe(600);
