@@ -55,7 +55,7 @@ const ToggleRow: React.FC<{
   </label>
 );
 
-type DevChamberFeatureSettingsSection = 'agents' | 'workspace' | 'commit' | 'autoApprove';
+type DevChamberFeatureSettingsSection = 'autocomplete' | 'agents' | 'workspace' | 'commit' | 'autoApprove';
 
 type DevChamberFeatureSettingsProps = {
   sections?: DevChamberFeatureSettingsSection[];
@@ -141,7 +141,7 @@ const FallbackModelPicker: React.FC<{
 };
 
 export const DevChamberFeatureSettings: React.FC<DevChamberFeatureSettingsProps> = ({ sections }) => {
-  const visibleSections = React.useMemo(() => new Set<DevChamberFeatureSettingsSection>(sections ?? ['agents', 'workspace', 'commit', 'autoApprove']), [sections]);
+  const visibleSections = React.useMemo(() => new Set<DevChamberFeatureSettingsSection>(sections ?? ['autocomplete', 'agents', 'workspace', 'commit', 'autoApprove']), [sections]);
   const settingsForkFeatures = useConfigStore((state) => state.settingsForkFeatures);
   const setSettingsForkFeatures = useConfigStore((state) => state.setSettingsForkFeatures);
   const agentList = useConfigStore((state) => state.agents);
@@ -208,11 +208,11 @@ export const DevChamberFeatureSettings: React.FC<DevChamberFeatureSettingsProps>
 
   return (
     <div data-settings-item="devchamber.features" className="min-w-0 space-y-4 overflow-hidden">
-      {visibleSections.has('agents') && (
+      {visibleSections.has('autocomplete') && (
       <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
-          <h4 className="typography-ui-label font-medium text-foreground">Agents and models</h4>
-          <p className="typography-meta text-muted-foreground">Choose the autocomplete agent and keep model fallback with agent behavior.</p>
+          <h4 className="typography-ui-label font-medium text-foreground">Code autocomplete</h4>
+          <p className="typography-meta text-muted-foreground">Control DevChamber inline suggestions in the VS Code editor.</p>
         </div>
 
         <ToggleRow
@@ -249,8 +249,17 @@ export const DevChamberFeatureSettings: React.FC<DevChamberFeatureSettingsProps>
           </Select>
           <p className="typography-meta text-muted-foreground">Used by the VS Code inline autocomplete provider when set.</p>
         </label>
+      </section>
+      )}
 
-        <div className="space-y-3 border-t border-border/40 pt-3">
+      {visibleSections.has('agents') && (
+      <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
+        <div className="space-y-1">
+          <h4 className="typography-ui-label font-medium text-foreground">Agents and models</h4>
+          <p className="typography-meta text-muted-foreground">Keep model fallback with agent behavior.</p>
+        </div>
+
+        <div className="space-y-3">
           <div className="space-y-1">
             <h5 className="typography-ui-label font-medium text-foreground">Model fallback</h5>
             <p className="typography-meta text-muted-foreground">

@@ -5,8 +5,10 @@ import { getSettingsPageMeta } from './metadata';
 interface SettingsSearchItem {
   id: string;
   page: SettingsPageSlug;
-  titleKey: I18nKey;
+  titleKey?: I18nKey;
+  titleText?: string;
   descriptionKey?: I18nKey;
+  descriptionText?: string;
   keywords?: string[];
   isAvailable?: (ctx: SettingsSearchAvailabilityContext) => boolean;
 }
@@ -488,6 +490,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['tools', 'permissions', 'allow', 'ask', 'deny'],
   },
   {
+    id: 'autocomplete.code',
+    page: 'autocomplete',
+    titleText: 'Code autocomplete',
+    descriptionText: 'DevChamber inline suggestions in the VS Code editor',
+    keywords: ['autocomplete', 'completion', 'inline suggestions', 'ghost text', 'agent'],
+  },
+  {
     id: 'commands.create',
     page: 'commands',
     titleKey: 'settings.commands.page.title.new',
@@ -793,8 +802,10 @@ export function buildSettingsSearchResults({
       return [];
     }
 
-    const title = t(item.titleKey);
-    const description = item.descriptionKey ? t(item.descriptionKey) : null;
+    const titleKey = item.titleKey;
+    const descriptionKey = item.descriptionKey;
+    const title = item.titleText ?? (titleKey ? t(titleKey) : getPageTitle(item.page));
+    const description = item.descriptionText ?? (descriptionKey ? t(descriptionKey) : null);
     const haystack = normalizeSearchText([
       title,
       description,

@@ -36,6 +36,7 @@ import { SnippetsPage } from '@/components/sections/snippets/SnippetsPage';
 import { GitPage } from '@/components/sections/git-identities/GitPage';
 import type { OpenChamberSection } from '@/components/sections/openchamber/types';
 import { OpenChamberPage } from '@/components/sections/openchamber/OpenChamberPage';
+import { DevChamberFeatureSettings } from '@/components/sections/openchamber/DevChamberFeatureSettings';
 import { AboutSettings } from '@/components/sections/openchamber/AboutSettings';
 import { useDeviceInfo } from '@/lib/device';
 import { isDesktopLocalOriginActive, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
@@ -93,6 +94,7 @@ const pageOrder: SettingsPageSlug[] = [
   'projects',
   'remote-instances',
   'agents',
+  'autocomplete',
   'behavior',
   'commands',
   'mcp',
@@ -190,6 +192,8 @@ export function getSettingsNavIcon(slug: SettingsPageSlug): IconName | null {
       return 'cloud';
     case 'agents':
       return 'ai-agent';
+    case 'autocomplete':
+      return 'code-ai';
     case 'behavior':
       return 'brain';
     case 'commands':
@@ -493,6 +497,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return t('settings.page.usage.title');
       case 'agents':
         return t('settings.page.agents.title');
+      case 'autocomplete':
+        return 'Autocomplete';
       case 'behavior':
         return t('settings.page.behavior.title');
       case 'commands':
@@ -784,6 +790,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return <RemoteInstancesPage />;
       case 'agents':
         return <AgentsPage />;
+      case 'autocomplete':
+        return (
+          <div className="h-full overflow-auto px-5 py-6">
+            <div className="mx-auto max-w-3xl space-y-4">
+              <div className="space-y-1">
+                <h1 className="typography-ui-header font-semibold text-foreground">Autocomplete</h1>
+                <p className="typography-ui text-muted-foreground">Configure DevChamber inline code suggestions.</p>
+              </div>
+              <DevChamberFeatureSettings sections={['autocomplete']} />
+            </div>
+          </div>
+        );
       case 'behavior':
         return <BehaviorPage />;
       case 'commands':

@@ -7,6 +7,7 @@ export type SettingsPageSlug =
   | 'providers'
   | 'usage'
   | 'agents'
+  | 'autocomplete'
   | 'behavior'
   | 'commands'
   | 'mcp'
@@ -96,6 +97,13 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
     group: 'opencode',
     kind: 'split',
     keywords: ['agent', 'agents', 'prompts', 'tools', 'permissions'],
+  },
+  {
+    slug: 'autocomplete',
+    title: 'Autocomplete',
+    group: 'opencode',
+    kind: 'single',
+    keywords: ['autocomplete', 'completion', 'inline suggestions', 'code autocomplete', 'ghost text', 'agent'],
   },
   {
     slug: 'behavior',
