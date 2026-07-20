@@ -7,6 +7,11 @@ const MAX_DOCUMENT_CHARS = 200_000;
 type CodeAutocompleteSettings = {
   enabled: boolean;
   agentName: string | null;
+  multilineEnabled: boolean;
+  throttleMs: number;
+  maxSuggestionLength: number;
+  maxSuggestionLines: number;
+  minPrefixLength: number;
 };
 
 const readCodeAutocompleteSettings = (): CodeAutocompleteSettings => {
@@ -18,9 +23,18 @@ const readCodeAutocompleteSettings = (): CodeAutocompleteSettings => {
     ? forkFeatures.autocomplete as Record<string, unknown>
     : {};
   const rawAgentName = typeof autocomplete.agentName === 'string' ? autocomplete.agentName.trim() : '';
+  const positiveInteger = (value: unknown, fallback: number, min: number, max: number): number => {
+    const numeric = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+    return Math.max(min, Math.min(max, Math.floor(numeric)));
+  };
   return {
     enabled: typeof autocomplete.enabled === 'boolean' ? autocomplete.enabled : true,
     agentName: rawAgentName.length > 0 ? rawAgentName : null,
+    multilineEnabled: typeof autocomplete.multilineEnabled === 'boolean' ? autocomplete.multilineEnabled : true,
+    throttleMs: positiveInteger(autocomplete.throttleMs, 120, 0, 2_000),
+    maxSuggestionLength: positiveInteger(autocomplete.maxSuggestionLength, 500, 20, 2_000),
+    maxSuggestionLines: positiveInteger(autocomplete.maxSuggestionLines, 6, 1, 20),
+    minPrefixLength: positiveInteger(autocomplete.minPrefixLength, 2, 1, 12),
   };
 };
 
@@ -40,6 +54,8 @@ const getBoundedDocumentText = (document: vscode.TextDocument, position: vscode.
 };
 
 class DevChamberInlineCompletionProvider implements vscode.InlineCompletionItemProvider {
+  private lastSuggestionAt = 0;
+
   provideInlineCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
@@ -50,6 +66,12 @@ class DevChamberInlineCompletionProvider implements vscode.InlineCompletionItemP
     if (token.isCancellationRequested || !autocompleteSettings.enabled) {
       return new vscode.InlineCompletionList([]);
     }
+
+    const now = Date.now();
+    if (autocompleteSettings.throttleMs > 0 && now - this.lastSuggestionAt < autocompleteSettings.throttleMs) {
+      return new vscode.InlineCompletionList([]);
+    }
+    this.lastSuggestionAt = now;
 
     const activeEditor = vscode.window.activeTextEditor;
     if (activeEditor?.document !== document) {
@@ -68,6 +90,10 @@ class DevChamberInlineCompletionProvider implements vscode.InlineCompletionItemP
       lineSuffix,
       languageId: document.languageId,
       agentName: autocompleteAgentName ?? undefined,
+      maxSuggestionLength: autocompleteSettings.maxSuggestionLength,
+      multilineEnabled: autocompleteSettings.multilineEnabled,
+      maxSuggestionLines: autocompleteSettings.maxSuggestionLines,
+      minPrefixLength: autocompleteSettings.minPrefixLength,
     });
 
     if (!suggestion) {

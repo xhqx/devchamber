@@ -6,16 +6,20 @@ export type CodeAutocompleteRequest = {
   languageId?: string;
   agentName?: string;
   maxSuggestionLength?: number;
+  multilineEnabled?: boolean;
+  maxSuggestionLines?: number;
+  minPrefixLength?: number;
 };
 
 export type CodeAutocompleteSuggestion = {
   insertText: string;
-  kind: 'identifier' | 'member' | 'line';
+  kind: 'identifier' | 'member' | 'line' | 'multiline';
 };
 
 const DEFAULT_MAX_SUGGESTION_LENGTH = 120;
+const DEFAULT_MAX_SUGGESTION_LINES = 6;
 const MAX_SCAN_CHARS = 80_000;
-const MIN_IDENTIFIER_PREFIX_LENGTH = 2;
+const DEFAULT_MIN_IDENTIFIER_PREFIX_LENGTH = 2;
 const IDENTIFIER_PATTERN = /[A-Za-z_$][\w$]*/g;
 const MEMBER_PATTERN = /\.([A-Za-z_$][\w$]*)/g;
 const UNSUPPORTED_LANGUAGE_IDS = new Set([
@@ -47,7 +51,8 @@ const scoreCandidate = (candidate: string, prefix: string, lastIndex: number, of
 
 const collectIdentifierSuggestion = (request: CodeAutocompleteRequest): CodeAutocompleteSuggestion | null => {
   const prefix = currentIdentifierPrefix(request.linePrefix);
-  if (prefix.length < MIN_IDENTIFIER_PREFIX_LENGTH) return null;
+  const minPrefixLength = request.minPrefixLength ?? DEFAULT_MIN_IDENTIFIER_PREFIX_LENGTH;
+  if (prefix.length < minPrefixLength) return null;
 
   const scanStart = Math.max(0, request.offset - MAX_SCAN_CHARS);
   const scanEnd = Math.min(request.text.length, request.offset + MAX_SCAN_CHARS / 4);
@@ -100,6 +105,77 @@ const collectMemberSuggestion = (request: CodeAutocompleteRequest): CodeAutocomp
   return best ? { insertText: best, kind: 'member' } : null;
 };
 
+
+const lineIndentLength = (value: string): number => value.match(/^\s*/)?.[0].length ?? 0;
+
+const stripTrailingBlankLines = (lines: string[]): string[] => {
+  const next = lines.slice();
+  while (next.length > 0 && next[next.length - 1].trim().length === 0) next.pop();
+  return next;
+};
+
+const collectMultilineSuggestion = (request: CodeAutocompleteRequest): CodeAutocompleteSuggestion | null => {
+  if (request.multilineEnabled === false) return null;
+
+  const currentPrefix = request.linePrefix.trimStart();
+  const currentTrimmedEnd = request.linePrefix.trimEnd();
+  if (currentPrefix.length < 3) return null;
+  if (!/[{[(]$/.test(currentTrimmedEnd)) return null;
+  const blockKeyword = currentPrefix.match(/^(if|for|while|switch|try|catch|else|function|class|describe|test|it)\b/)?.[1] ?? null;
+  const currentIndent = request.linePrefix.slice(0, lineIndentLength(request.linePrefix));
+  const maxLines = Math.max(1, Math.min(20, request.maxSuggestionLines ?? DEFAULT_MAX_SUGGESTION_LINES));
+  if (maxLines <= 1) return null;
+
+  const beforeCursor = request.text.slice(Math.max(0, request.offset - MAX_SCAN_CHARS), request.offset);
+  const lines = beforeCursor.split(/\r?\n/);
+  // The final line is the active cursor line. Search only completed prior lines.
+  const priorLines = lines.slice(0, -1);
+
+  for (let index = priorLines.length - 1; index >= 0; index -= 1) {
+    const candidateLine = priorLines[index];
+    const candidateTrimmed = candidateLine.trimStart();
+    const candidateKeyword = candidateTrimmed.match(/^(if|for|while|switch|try|catch|else|function|class|describe|test|it)\b/)?.[1] ?? null;
+    const startsWithCurrentPrefix = candidateTrimmed.startsWith(currentPrefix);
+    const matchesBlockShape = Boolean(blockKeyword && candidateKeyword === blockKeyword && /[{[(]\s*$/.test(candidateTrimmed));
+    if (!startsWithCurrentPrefix && !matchesBlockShape) continue;
+
+    const candidateIndentLength = lineIndentLength(candidateLine);
+    const candidateIndent = candidateLine.slice(0, candidateIndentLength);
+    const firstLineSuffix = candidateTrimmed.slice(currentPrefix.length);
+    const continuation: string[] = [];
+
+    for (let nextIndex = index + 1; nextIndex < priorLines.length && continuation.length < maxLines - 1; nextIndex += 1) {
+      const nextLine = priorLines[nextIndex];
+      const nextTrimmed = nextLine.trim();
+      if (nextTrimmed.length === 0) {
+        continuation.push('');
+        continue;
+      }
+
+      const nextIndentLength = lineIndentLength(nextLine);
+      if (nextIndentLength < candidateIndentLength) break;
+
+      const normalizedLine = nextLine.startsWith(candidateIndent)
+        ? `${currentIndent}${nextLine.slice(candidateIndent.length)}`
+        : `${currentIndent}${nextLine.trimStart()}`;
+      continuation.push(normalizedLine);
+
+      if (nextIndentLength === candidateIndentLength && /^[}\])]/.test(nextTrimmed)) break;
+      if (nextIndentLength === candidateIndentLength && nextIndex > index + 1) break;
+    }
+
+    const body = stripTrailingBlankLines(continuation);
+    if (firstLineSuffix.length === 0 && body.length === 0) continue;
+    if (body.length === 0) continue;
+
+    const insertText = [firstLineSuffix, ...body].join('\n');
+    if (insertText.trim().length === 0) continue;
+    return { insertText, kind: 'multiline' };
+  }
+
+  return null;
+};
+
 const collectRepeatedLineSuggestion = (request: CodeAutocompleteRequest): CodeAutocompleteSuggestion | null => {
   const currentPrefix = request.linePrefix.trimStart();
   if (currentPrefix.length < 4) return null;
@@ -124,7 +200,8 @@ export const buildCodeAutocompleteSuggestion = (request: CodeAutocompleteRequest
   if (!hasOnlyClosingTextAfterCursor(request.lineSuffix)) return null;
 
   const maxLength = request.maxSuggestionLength ?? DEFAULT_MAX_SUGGESTION_LENGTH;
-  const suggestion = collectIdentifierSuggestion(request)
+  const suggestion = collectMultilineSuggestion(request)
+    ?? collectIdentifierSuggestion(request)
     ?? collectMemberSuggestion(request)
     ?? collectRepeatedLineSuggestion(request);
 

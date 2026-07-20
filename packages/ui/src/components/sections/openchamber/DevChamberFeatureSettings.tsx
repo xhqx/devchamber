@@ -249,6 +249,90 @@ export const DevChamberFeatureSettings: React.FC<DevChamberFeatureSettingsProps>
           </Select>
           <p className="typography-meta text-muted-foreground">Used by the VS Code inline autocomplete provider when set.</p>
         </label>
+
+        <ToggleRow
+          checked={settingsForkFeatures.autocomplete.multilineEnabled}
+          label="Multiline code completion"
+          description="Allow inline suggestions to include short repeated code blocks, not just same-line suffixes."
+          onChange={(checked) => updateFeatures((current) => ({
+            ...current,
+            autocomplete: { ...current.autocomplete, multilineEnabled: checked },
+          }))}
+        />
+
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block space-y-1">
+            <span className="typography-meta text-muted-foreground">Throttle timeout, ms</span>
+            <Input
+              type="number"
+              min={0}
+              max={2000}
+              value={settingsForkFeatures.autocomplete.throttleMs}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                updateFeatures((current) => ({
+                  ...current,
+                  autocomplete: { ...current.autocomplete, throttleMs: Number.isFinite(value) ? value : current.autocomplete.throttleMs },
+                }));
+              }}
+              className="h-8 w-full"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="typography-meta text-muted-foreground">Max characters</span>
+            <Input
+              type="number"
+              min={20}
+              max={2000}
+              value={settingsForkFeatures.autocomplete.maxSuggestionLength}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                updateFeatures((current) => ({
+                  ...current,
+                  autocomplete: { ...current.autocomplete, maxSuggestionLength: Number.isFinite(value) ? value : current.autocomplete.maxSuggestionLength },
+                }));
+              }}
+              className="h-8 w-full"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="typography-meta text-muted-foreground">Max lines</span>
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={settingsForkFeatures.autocomplete.maxSuggestionLines}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                updateFeatures((current) => ({
+                  ...current,
+                  autocomplete: { ...current.autocomplete, maxSuggestionLines: Number.isFinite(value) ? value : current.autocomplete.maxSuggestionLines },
+                }));
+              }}
+              className="h-8 w-full"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="typography-meta text-muted-foreground">Min prefix characters</span>
+            <Input
+              type="number"
+              min={1}
+              max={12}
+              value={settingsForkFeatures.autocomplete.minPrefixLength}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                updateFeatures((current) => ({
+                  ...current,
+                  autocomplete: { ...current.autocomplete, minPrefixLength: Number.isFinite(value) ? value : current.autocomplete.minPrefixLength },
+                }));
+              }}
+              className="h-8 w-full"
+            />
+          </label>
+        </div>
+        <p className="typography-meta text-muted-foreground">
+          Keep throttle above zero to avoid noisy provider calls while typing; increase max lines only if multiline suggestions feel too short.
+        </p>
       </section>
       )}
 

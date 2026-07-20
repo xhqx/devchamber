@@ -23,6 +23,11 @@ export type ForkFeatureSettings = {
   autocomplete: {
     enabled: boolean;
     agentName: string | null;
+    multilineEnabled: boolean;
+    throttleMs: number;
+    maxSuggestionLength: number;
+    maxSuggestionLines: number;
+    minPrefixLength: number;
   };
   commitGeneration: {
     maxFiles: number;
@@ -52,6 +57,11 @@ export const DEFAULT_FORK_FEATURE_SETTINGS: ForkFeatureSettings = {
   autocomplete: {
     enabled: true,
     agentName: null,
+    multilineEnabled: true,
+    throttleMs: 120,
+    maxSuggestionLength: 500,
+    maxSuggestionLines: 6,
+    minPrefixLength: 2,
   },
   commitGeneration: {
     maxFiles: 40,
@@ -140,6 +150,34 @@ export const normalizeForkFeatureSettings = (value: unknown): ForkFeatureSetting
     autocomplete: {
       enabled: normalizeBoolean(pick(autocomplete, 'enabled', 'fork.autocomplete.enabled'), DEFAULT_FORK_FEATURE_SETTINGS.autocomplete.enabled),
       agentName: normalizeOptionalString(pick(autocomplete, 'agentName', 'fork.autocomplete.agentName')),
+      multilineEnabled: normalizeBoolean(
+        pick(autocomplete, 'multilineEnabled', 'fork.autocomplete.multilineEnabled'),
+        DEFAULT_FORK_FEATURE_SETTINGS.autocomplete.multilineEnabled,
+      ),
+      throttleMs: normalizePositiveInteger(
+        pick(autocomplete, 'throttleMs', 'fork.autocomplete.throttleMs'),
+        DEFAULT_FORK_FEATURE_SETTINGS.autocomplete.throttleMs,
+        0,
+        2_000,
+      ),
+      maxSuggestionLength: normalizePositiveInteger(
+        pick(autocomplete, 'maxSuggestionLength', 'fork.autocomplete.maxSuggestionLength'),
+        DEFAULT_FORK_FEATURE_SETTINGS.autocomplete.maxSuggestionLength,
+        20,
+        2_000,
+      ),
+      maxSuggestionLines: normalizePositiveInteger(
+        pick(autocomplete, 'maxSuggestionLines', 'fork.autocomplete.maxSuggestionLines'),
+        DEFAULT_FORK_FEATURE_SETTINGS.autocomplete.maxSuggestionLines,
+        1,
+        20,
+      ),
+      minPrefixLength: normalizePositiveInteger(
+        pick(autocomplete, 'minPrefixLength', 'fork.autocomplete.minPrefixLength'),
+        DEFAULT_FORK_FEATURE_SETTINGS.autocomplete.minPrefixLength,
+        1,
+        12,
+      ),
     },
     commitGeneration: {
       maxFiles: normalizePositiveInteger(

@@ -60,4 +60,47 @@ const selected▮Other
 `));
     assert.deepEqual(suggestion, { insertText: 'Seconds', kind: 'identifier' });
   });
+
+  test('suggests multiline repeated code blocks', () => {
+    const suggestion = buildCodeAutocompleteSuggestion({
+      ...request(`
+if (user.isAdmin) {
+  grantAccess(user);
+  return true;
+}
+
+if (user.isOwner) {▮
+`),
+      maxSuggestionLines: 4,
+    });
+    assert.deepEqual(suggestion, {
+      insertText: '\n  grantAccess(user);\n  return true;\n}',
+      kind: 'multiline',
+    });
+  });
+
+  test('honors multiline completion opt-out', () => {
+    const suggestion = buildCodeAutocompleteSuggestion({
+      ...request(`
+if (user.isAdmin) {
+  grantAccess(user);
+}
+
+if (user.isOwner) {▮
+`),
+      multilineEnabled: false,
+    });
+    assert.equal(suggestion, null);
+  });
+
+  test('honors custom minimum prefix length for identifier completions', () => {
+    const suggestion = buildCodeAutocompleteSuggestion({
+      ...request(`
+const selectedProviderId = 'openai';
+const selected▮
+`),
+      minPrefixLength: 10,
+    });
+    assert.equal(suggestion, null);
+  });
 });
