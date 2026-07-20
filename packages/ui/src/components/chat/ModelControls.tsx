@@ -2281,8 +2281,10 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                             <DropdownMenuTrigger asChild>
                                 <button
                                     type="button"
+                                    disabled={!isReady}
                                     className={cn(
-                                        'model-controls__model-trigger flex items-center gap-1.5 cursor-pointer hover:bg-transparent hover:opacity-70 min-w-0 appearance-none border-0 bg-transparent p-0 text-left',
+                                        'model-controls__model-trigger flex items-center gap-1.5 hover:bg-transparent hover:opacity-70 min-w-0 appearance-none border-0 bg-transparent p-0 text-left focus:outline-none',
+                                        isReady ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed',
                                         buttonHeight
                                     )}
                                 >
@@ -2612,7 +2614,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                             <button
                                 type="button"
                                 className={cn(
-                                    'model-controls__variant-trigger flex items-center gap-1.5 transition-colors cursor-pointer hover:bg-transparent hover:opacity-70 min-w-0 appearance-none border-0 bg-transparent p-0 text-left',
+                                    'model-controls__variant-trigger flex items-center gap-1.5 transition-colors cursor-pointer hover:bg-transparent hover:opacity-70 min-w-0 appearance-none border-0 bg-transparent p-0 text-left focus:outline-none',
                                     buttonHeight,
                                 )}
                             >
@@ -2675,8 +2677,10 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
                                 <DropdownMenuTrigger asChild>
                                     <button
                                         type="button"
+                                        disabled={!isReady}
                                         className={cn(
-                                            'flex items-center gap-1.5 transition-colors cursor-pointer hover:bg-transparent hover:opacity-70 min-w-0 appearance-none border-0 bg-transparent p-0 text-left',
+                                            'flex items-center gap-1.5 transition-colors hover:bg-transparent hover:opacity-70 min-w-0 appearance-none border-0 bg-transparent p-0 text-left focus:outline-none',
+                                            isReady ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed',
                                             buttonHeight
                                         )}
                                     >

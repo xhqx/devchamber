@@ -130,6 +130,7 @@ export interface AgentMutationResult {
 export type AgentWithExtras = Agent & {
   native?: boolean;
   hidden?: boolean;
+  disable?: boolean;
   options?: { hidden?: boolean };
   scope?: AgentScope;
   /** Subfolder name parsed from file path, e.g. "business", "development" */
@@ -178,6 +179,45 @@ const SLOW_HEALTH_POLL_INCREMENT_MS = 200;
 const SLOW_HEALTH_POLL_MAX_MS = 2000;
 
 const hasValue = <T>(value: T | null | undefined): value is T => value !== null && value !== undefined;
+
+const parseModelConfig = (model: string | null | undefined): Agent['model'] | undefined => {
+  if (!model) return undefined;
+  const slashIndex = model.indexOf('/');
+  if (slashIndex <= 0 || slashIndex >= model.length - 1) return undefined;
+  return {
+    providerID: model.slice(0, slashIndex),
+    modelID: model.slice(slashIndex + 1),
+  } as Agent['model'];
+};
+
+const buildLocalAgentFromConfig = (config: AgentConfig): AgentWithExtras => {
+  const agent: AgentWithExtras = {
+    name: config.name,
+    mode: config.mode || 'subagent',
+    ...(config.description ? { description: config.description } : {}),
+    ...(config.prompt ? { prompt: config.prompt } : {}),
+    ...(config.permission ? { permission: config.permission } : {}),
+    ...(config.scope ? { scope: config.scope } : {}),
+  } as unknown as AgentWithExtras;
+
+  const parsedModel = parseModelConfig(config.model);
+  if (parsedModel) agent.model = parsedModel;
+  if (config.variant) agent.variant = config.variant;
+  if (hasValue(config.temperature)) agent.temperature = config.temperature;
+  if (hasValue(config.top_p)) agent.topP = config.top_p;
+  if (config.disable !== undefined) agent.disable = config.disable;
+
+  return agent;
+};
+
+const mergeLocalAgent = (currentAgents: Agent[], config: AgentConfig): Agent[] => {
+  const nextAgent = buildLocalAgentFromConfig(config);
+  const replaced = currentAgents.some((agent) => agent.name === config.name);
+  const nextAgents = replaced
+    ? currentAgents.map((agent) => (agent.name === config.name ? { ...agent, ...nextAgent } : agent))
+    : [...currentAgents, nextAgent];
+  return nextAgents.sort((a, b) => a.name.localeCompare(b.name));
+};
 
 export interface AgentDraft {
   name: string;
@@ -373,6 +413,11 @@ export const useAgentsStore = create<AgentsStore>()(
               const message = payload?.error || 'Failed to create agent';
               throw new Error(message);
             }
+
+            set((state) => ({
+              agents: mergeLocalAgent(state.agents, config),
+              selectedAgentName: config.name,
+            }));
 
             invalidateAgentsLoadCache(configDirectory);
 
