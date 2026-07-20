@@ -62,6 +62,12 @@ export class SessionEditorPanelProvider {
     );
   }
 
+  public postMessage(message: unknown): void {
+    for (const entry of this._panels.values()) {
+      void entry.panel.webview.postMessage(message);
+    }
+  }
+
   public createOrShowNewSession(): void {
     // Generate unique panel ID for new session drafts
     const panelId = `new_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;

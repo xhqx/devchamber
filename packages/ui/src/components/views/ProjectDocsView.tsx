@@ -3,8 +3,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
-import { buildRepositoryIndexFromFilesApi } from '@/lib/repoIndex/fromFilesApi';
 import type { RepoIndexedSymbol, RepoIndex, RepoLanguage } from '@/lib/repoIndex/schema';
+import { useLiveRepoIndex } from '@/lib/repoIndex/useLiveRepoIndex';
 import { buildRepoMapViewModel } from '@/lib/repoIndex/viewModel';
 import { cn } from '@/lib/utils';
 
@@ -241,38 +241,14 @@ export const ProjectDocsView: React.FC<ProjectDocsViewProps> = ({ onGenerateDocs
   const { files, editor } = useRuntimeAPIs();
   const effectiveDirectory = useEffectiveDirectory();
   const projectRoot = effectiveDirectory ?? '';
-  const [index, setIndex] = React.useState<RepoIndex | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const refresh = React.useCallback(async () => {
-    if (!projectRoot) {
-      setIndex(null);
-      setError('Open a workspace folder to build project docs.');
-      return;
-    }
-    if (!files.scanRepoIndex) {
-      setIndex(null);
-      setError('Project scanning is not available in this runtime. Open DevChamber from the VS Code extension to build docs.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const nextIndex = await buildRepositoryIndexFromFilesApi(files, { directory: projectRoot, maxFiles: 2500 });
-      setIndex(nextIndex);
-    } catch (refreshError) {
-      setIndex(null);
-      setError(refreshError instanceof Error ? refreshError.message : 'Failed to scan this project.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [files, projectRoot]);
-
-  React.useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const { index, isLoading, error, refresh } = useLiveRepoIndex({
+    files,
+    directory: projectRoot,
+    maxFiles: 2500,
+    emptyDirectoryError: 'Open a workspace folder to build project docs.',
+    unavailableError: 'Project scanning is not available in this runtime. Open DevChamber from the VS Code extension to build docs.',
+    failureError: 'Failed to scan this project.',
+  });
 
   const handleOpenFile = React.useCallback((path: string, line?: number) => {
     if (!editor?.openFile) return;

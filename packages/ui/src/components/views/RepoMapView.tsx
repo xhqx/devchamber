@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
-import { buildRepositoryIndexFromFilesApi } from '@/lib/repoIndex/fromFilesApi';
+import { useLiveRepoIndex } from '@/lib/repoIndex/useLiveRepoIndex';
 import type { RepoLanguage } from '@/lib/repoIndex/schema';
 import type { RepoMapTreeNode, RepoMapViewModel } from '@/lib/repoIndex/viewModel';
 import { buildRepoMapViewModel, filterRepoMapSymbols, filterRepoMapTree } from '@/lib/repoIndex/viewModel';
@@ -358,38 +358,22 @@ export const RepoMapView: React.FC = () => {
   const { files, editor } = useRuntimeAPIs();
   const effectiveDirectory = useEffectiveDirectory();
   const projectRoot = effectiveDirectory ?? '';
-  const [viewModel, setViewModel] = React.useState<RepoMapViewModel | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const { index, isLoading, error, refresh } = useLiveRepoIndex({
+    files,
+    directory: projectRoot,
+    maxFiles: 2000,
+    emptyDirectoryError: 'Select a project to build its repo map.',
+    unavailableError: 'Repo scanning is not available in this runtime. Open DevChamber from the VS Code extension to build a repo map.',
+    failureError: 'Failed to build repo map.',
+  });
+  const viewModel = React.useMemo<RepoMapViewModel | null>(() => (
+    index ? buildRepoMapViewModel(index, { maxSymbols: 200, maxRecentFiles: 12 }) : null
+  ), [index]);
   const [treeQuery, setTreeQuery] = React.useState('');
   const [selectedLanguage, setSelectedLanguage] = React.useState<RepoLanguage | 'all'>('all');
   const [selectedPackage, setSelectedPackage] = React.useState('');
   const [symbolQuery, setSymbolQuery] = React.useState('');
   const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(() => new Set(['']));
-
-  const refresh = React.useCallback(async () => {
-    if (!projectRoot) {
-      setViewModel(null);
-      setError('Select a project to build its repo map.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const index = await buildRepositoryIndexFromFilesApi(files, { directory: projectRoot, maxFiles: 2000 });
-      setViewModel(buildRepoMapViewModel(index, { maxSymbols: 200, maxRecentFiles: 12 }));
-    } catch (refreshError) {
-      setViewModel(null);
-      setError(refreshError instanceof Error ? refreshError.message : 'Failed to build repo map.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [files, projectRoot]);
-
-  React.useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   React.useEffect(() => {
     setTreeQuery('');

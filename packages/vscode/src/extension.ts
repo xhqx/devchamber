@@ -21,6 +21,8 @@ const t = vscode.l10n.t;
 
 const SETTINGS_KEY = 'devchamber.settings';
 const CHAT_VIEW_BOOTSTRAP_DELAY_MS = 80;
+const PROJECT_INDEX_CHANGE_DEBOUNCE_MS = 700;
+const PROJECT_INDEX_IGNORED_SEGMENTS = new Set(['.git', 'node_modules', 'dist', 'build', '.next', '.turbo', '.cache', 'coverage']);
 
 const waitForChatViewBootstrap = () => new Promise<void>((resolve) => setTimeout(resolve, CHAT_VIEW_BOOTSTRAP_DELAY_MS));
 
@@ -37,6 +39,64 @@ const formatDurationMs = (value: number | null | undefined) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '(none)';
   const seconds = Math.round(value / 100) / 10;
   return `${seconds}s`;
+};
+
+const shouldBroadcastProjectIndexChange = (uri: vscode.Uri): boolean => {
+  if (uri.scheme !== 'file') return false;
+  const segments = uri.fsPath.split(/[\\/]+/).filter(Boolean);
+  return !segments.some((segment) => PROJECT_INDEX_IGNORED_SEGMENTS.has(segment));
+};
+
+const getWorkspaceDirectoryForPath = (uri: vscode.Uri): string | null => {
+  const folder = vscode.workspace.getWorkspaceFolder(uri);
+  return folder?.uri.fsPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null;
+};
+
+const registerProjectIndexChangeWatcher = (context: vscode.ExtensionContext) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let directory: string | null = null;
+  const changedPaths = new Set<string>();
+
+  const flush = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
+    if (!directory || changedPaths.size === 0) {
+      changedPaths.clear();
+      directory = null;
+      return;
+    }
+
+    const payload = {
+      directory,
+      paths: Array.from(changedPaths).slice(0, 80),
+      reason: 'workspace-files-changed',
+    };
+    changedPaths.clear();
+    directory = null;
+
+    chatViewProvider?.postMessage({ type: 'command', command: 'projectFilesChanged', payload });
+    sessionEditorProvider?.postMessage({ type: 'command', command: 'projectFilesChanged', payload });
+  };
+
+  const schedule = (uri: vscode.Uri) => {
+    if (!shouldBroadcastProjectIndexChange(uri)) return;
+    directory = getWorkspaceDirectoryForPath(uri) ?? directory;
+    changedPaths.add(uri.fsPath);
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(flush, PROJECT_INDEX_CHANGE_DEBOUNCE_MS);
+  };
+
+  const watcher = vscode.workspace.createFileSystemWatcher('**/*');
+  context.subscriptions.push(
+    watcher,
+    { dispose: () => { if (timer) clearTimeout(timer); } },
+    watcher.onDidCreate(schedule),
+    watcher.onDidChange(schedule),
+    watcher.onDidDelete(schedule),
+    vscode.workspace.onDidSaveTextDocument((document) => schedule(document.uri)),
+  );
 };
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -130,6 +190,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Create chat view provider with manager reference
   // The webview will show a loading state until OpenCode is ready
   chatViewProvider = new ChatViewProvider(context, context.extensionUri, openCodeManager);
+  registerProjectIndexChangeWatcher(context);
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
