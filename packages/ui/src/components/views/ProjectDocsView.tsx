@@ -70,9 +70,10 @@ type ProjectDocsContentProps = {
   index: RepoIndex;
   projectRoot: string;
   onOpenFile?: (path: string, line?: number) => void;
+  onGenerateDocs?: (index: RepoIndex) => void;
 };
 
-const ProjectDocsContent: React.FC<ProjectDocsContentProps> = ({ index, projectRoot, onOpenFile }) => {
+const ProjectDocsContent: React.FC<ProjectDocsContentProps> = ({ index, projectRoot, onOpenFile, onGenerateDocs }) => {
   const repoMap = React.useMemo(() => buildRepoMapViewModel(index, { maxSymbols: 80, maxRecentFiles: 8 }), [index]);
   const docsFiles = React.useMemo(() => index.files.filter(isHumanReadableDocsFile).slice(0, 12), [index.files]);
   const largestFiles = React.useMemo(() => [...index.files].sort(bySizeDesc).slice(0, 8), [index.files]);
@@ -100,6 +101,11 @@ const ProjectDocsContent: React.FC<ProjectDocsContentProps> = ({ index, projectR
               <Metric label="Symbols" value={index.symbols.length} />
               <Metric label="Docs" value={`${docsPercent}%`} />
             </div>
+            {onGenerateDocs ? (
+              <Button size="sm" onClick={() => onGenerateDocs(index)}>
+                Generate docs with agent
+              </Button>
+            ) : null}
           </div>
         </section>
 
@@ -227,7 +233,11 @@ const FileButton: React.FC<{ file: RepoIndex['files'][number]; compact?: boolean
   </button>
 );
 
-export const ProjectDocsView: React.FC = () => {
+export type ProjectDocsViewProps = {
+  onGenerateDocs?: (index: RepoIndex) => void;
+};
+
+export const ProjectDocsView: React.FC<ProjectDocsViewProps> = ({ onGenerateDocs }) => {
   const { files, editor } = useRuntimeAPIs();
   const effectiveDirectory = useEffectiveDirectory();
   const projectRoot = effectiveDirectory ?? '';
@@ -292,7 +302,7 @@ export const ProjectDocsView: React.FC = () => {
           Scanning project and preparing readable docs…
         </div>
       ) : index ? (
-        <ProjectDocsContent index={index} projectRoot={projectRoot} onOpenFile={handleOpenFile} />
+        <ProjectDocsContent index={index} projectRoot={projectRoot} onOpenFile={handleOpenFile} onGenerateDocs={onGenerateDocs} />
       ) : (
         <div className="m-4 rounded-xl border border-border/60 bg-[var(--surface-elevated)]/60 p-6 typography-meta text-muted-foreground">
           Open a workspace folder and refresh to build project docs.

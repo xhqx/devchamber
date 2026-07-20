@@ -5,6 +5,7 @@ import { SessionDialogs } from '@/components/session/SessionDialogs';
 import { ChatView } from '@/components/views/ChatView';
 import { ChatResponseViewToggle } from '@/components/chat/ChatResponseViewToggle';
 import { useSessionUIStore } from '@/sync/session-ui-store';
+import { useInputStore } from '@/sync/input-store';
 import { useViewportStore } from '@/sync/viewport-store';
 import { useSessions, useDirectorySync, useSessionMessages, useSessionMessagesResolved } from '@/sync/sync-context';
 import { useConfigStore } from '@/stores/useConfigStore';
@@ -41,6 +42,7 @@ import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
 import type { Session } from '@opencode-ai/sdk/v2';
 import type { UsageWindow } from '@/types';
 import type { SessionContextUsage } from '@/stores/types/sessionTypes';
+import type { RepoIndex } from '@/lib/repoIndex/schema';
 import { useUIStore, type TimeFormatPreference } from '@/stores/useUIStore';
 
 const SettingsView = lazyWithChunkRecovery(() => import('@/components/views/SettingsView').then(m => ({ default: m.SettingsView })));
@@ -74,12 +76,43 @@ const normalizePath = (value?: string | null): string | null => {
   return replaced.length > 1 ? replaced.replace(/\/+$/, '') : replaced;
 };
 
+const buildProjectDocsGenerationPrompt = (index: RepoIndex, projectRoot: string | null): string => {
+  const docsFiles = index.files.filter((file) => file.isDocs).slice(0, 20).map((file) => file.path);
+  const topSourceFiles = [...index.files]
+    .filter((file) => !file.isDocs && file.language !== 'other')
+    .sort((a, b) => b.size - a.size)
+    .slice(0, 20)
+    .map((file) => `${file.path} (${file.language}, ${file.size} bytes)`);
+  const packages = index.packageBoundaries.slice(0, 20).map((pkg) => pkg.name || pkg.path || 'root');
+  const symbols = index.symbols.slice(0, 40).map((symbol) => `${symbol.kind} ${symbol.name} — ${symbol.path}:${symbol.line}`);
+
+  return [
+    'Generate readable project documentation for this repository.',
+    '',
+    'Goal: gather project information and produce user-facing docs, not generic markdown. Explain what the project is, how it is structured, key modules, important flows, setup/run hints inferred from files, and documentation gaps.',
+    '',
+    `Workspace: ${projectRoot || 'current workspace'}`,
+    `Repo scan: ${index.files.length} files, ${index.directories.length} directories, ${index.symbols.length} symbols, ${index.docsFiles.length} existing docs files, ${index.packageBoundaries.length} package boundaries.`,
+    '',
+    `Existing docs:\n${docsFiles.length ? docsFiles.map((path) => `- ${path}`).join('\n') : '- none detected'}`,
+    '',
+    `Main packages:\n${packages.length ? packages.map((name) => `- ${name}`).join('\n') : '- none detected'}`,
+    '',
+    `Large/source files to inspect first:\n${topSourceFiles.length ? topSourceFiles.map((path) => `- ${path}`).join('\n') : '- none detected'}`,
+    '',
+    `Indexed symbols sample:\n${symbols.length ? symbols.map((symbol) => `- ${symbol}`).join('\n') : '- none detected'}`,
+    '',
+    'Output format: use visual markdown with clear sections, compact diagrams/tables where helpful, and concrete file references. If information is missing, inspect the repo with tools before finalizing.',
+  ].join('\n');
+};
+
 type VSCodeView = 'sessions' | 'chat' | 'settings' | 'repo-map' | 'docs';
 
 export const VSCodeLayout: React.FC = () => {
   const { t } = useI18n();
   const runtimeApis = useRuntimeAPIs();
   const setSettingsPage = useUIStore((state) => state.setSettingsPage);
+  const setPendingInputText = useInputStore((state) => state.setPendingInputText);
   useUpdatePolling();
 
   const viewMode = React.useMemo<'sidebar' | 'editor'>(() => {
@@ -268,6 +301,12 @@ export const VSCodeLayout: React.FC = () => {
   const handleOpenDocs = React.useCallback(() => {
     setCurrentView('docs');
   }, []);
+
+  const handleGenerateProjectDocs = React.useCallback((index: RepoIndex) => {
+    setPendingInputText(buildProjectDocsGenerationPrompt(index, activeWorkspacePath), 'replace');
+    setCurrentView('chat');
+    toast.success('Documentation prompt prepared in chat');
+  }, [activeWorkspacePath, setPendingInputText]);
 
   const isSessionInActiveWorkspace = React.useCallback((session: Session): boolean => {
     if (!activeWorkspacePath) {
@@ -607,7 +646,7 @@ export const VSCodeLayout: React.FC = () => {
           />
           <div className="flex-1 overflow-hidden">
             <React.Suspense fallback={null}>
-              <ProjectDocsView />
+              <ProjectDocsView onGenerateDocs={handleGenerateProjectDocs} />
             </React.Suspense>
           </div>
         </div>
