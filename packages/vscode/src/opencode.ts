@@ -271,7 +271,7 @@ function createConfiguredOpencodeBinaryError(raw: string, normalized: string): E
 function validateConfiguredOpencodeBinaryForManagedStart(): string | null {
   const candidates: string[] = [];
   try {
-    const config = vscode.workspace.getConfiguration('openchamber');
+    const config = vscode.workspace.getConfiguration('devchamber');
     const raw = config.get<string>('opencodeBinary') || '';
     if (raw.trim()) {
       candidates.push(raw.trim());
@@ -310,7 +310,7 @@ function validateConfiguredOpencodeBinaryForManagedStart(): string | null {
 function resolveOpencodeCliPath(): string | null {
   const configured = (() => {
     try {
-      const config = vscode.workspace.getConfiguration('openchamber');
+      const config = vscode.workspace.getConfiguration('devchamber');
       return normalizeConfiguredOpencodeBinary(config.get<string>('opencodeBinary') || '');
     } catch {
       return null;
@@ -809,7 +809,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
 
   let pendingOperation: Promise<void> | null = null;
 
-  const config = vscode.workspace.getConfiguration('openchamber');
+  const config = vscode.workspace.getConfiguration('devchamber');
   const configuredApiUrl = config.get<string>('apiUrl') || '';
   const useConfiguredUrl = configuredApiUrl && configuredApiUrl.trim().length > 0;
 

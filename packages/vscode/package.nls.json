@@ -1,10 +1,10 @@
 {
-  "extension.description": "AI coding assistant powered by OpenCode",
+  "extension.description": "DevChamber AI coding workspace",
   "views.chat.name": "Chat",
   "command.openSidebar.title": "Open Sidebar",
   "command.focusChat.title": "Focus Chat",
   "command.restartApi.title": "Restart API Connection",
-  "command.showOpenCodeStatus.title": "Show OpenCode Status",
+  "command.showOpenCodeStatus.title": "Show DevChamber Runtime Status",
   "command.openAgentManager.title": "Open Agent Manager",
   "command.openActiveSessionInEditor.title": "Open Active Session in Editor",
   "command.openNewSessionInEditor.title": "Open New Session in Editor",

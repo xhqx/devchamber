@@ -177,7 +177,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
   // Migration: clear legacy auto-set API URLs (ports 47680-47689 were auto-assigned by older extension versions)
-  const config = vscode.workspace.getConfiguration('openchamber');
+  const config = vscode.workspace.getConfiguration('devchamber');
   const legacyApiUrl = config.get<string>('apiUrl') || '';
   if (/^https?:\/\/localhost:4768\d\/?$/.test(legacyApiUrl.trim())) {
     await config.update('apiUrl', '', vscode.ConfigurationTarget.Global);
@@ -599,7 +599,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('devchamber.showOpenCodeStatus', async () => {
-      const config = vscode.workspace.getConfiguration('openchamber');
+      const config = vscode.workspace.getConfiguration('devchamber');
       const configuredApiUrl = (config.get<string>('apiUrl') || '').trim();
 
       const extensionVersion = String(context.extension?.packageJSON?.version || '');
@@ -717,7 +717,7 @@ export async function activate(context: vscode.ExtensionContext) {
         `Working directory: ${workingDirectory}`,
         `Working dir matches workspace: ${workingDirectoryMatchesWorkspace ? 'yes' : 'no'}`,
         `API URL (configured): ${configuredApiUrl || '(none)'}`,
-        `OpenCode binary (configured): ${(vscode.workspace.getConfiguration('openchamber').get<string>('opencodeBinary') || '').trim() || '(none)'}`,
+        `OpenCode binary (configured): ${(vscode.workspace.getConfiguration('devchamber').get<string>('opencodeBinary') || '').trim() || '(none)'}`,
         `API URL (resolved): ${openCodeManager?.getApiUrl() ?? '(none)'}`,
         `API URL path: ${resolvedApiPath || '(none)'}`,
         debug
