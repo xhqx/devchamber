@@ -15,19 +15,5 @@
   "command.newSession.title": "New Session",
   "command.showSettings.title": "Settings",
   "command.generateCommitMessage.title": "Generate Commit Message",
-  "command.attachExplorerToChat.title": "Attach to DevChamber Chat",
-  "configuration.apiUrl.description": "URL of an external OpenCode API server. Leave empty to auto-start a local instance.",
-  "configuration.opencodeBinary.description": "Optional absolute path to the opencode CLI binary. Useful if PATH lookup fails. Requires window reload or API restart to apply.",
-  "configuration.fork.autoApprove.enabled.description": "Enable scoped auto-approval for eligible permission requests. Disabled by default.",
-  "configuration.fork.autoApprove.timeoutSeconds.description": "Seconds to show the auto-approval countdown before approving an eligible request.",
-  "configuration.fork.autoApprove.allowedTools.description": "Tool names that may be auto-approved when all other policy checks pass.",
-  "configuration.fork.docs.requiredOnCodeChange.description": "Require a docs-update decision when code changes are detected.",
-  "configuration.fork.modelFallback.enabled.description": "Enable fallback chains for safe idempotent generation tasks.",
-  "configuration.fork.modelFallback.chain.description": "Fallback model chain configuration for commit, PR, autocomplete, docs, and chat generation.",
-  "configuration.fork.repoIndex.enabled.description": "Enable the project repository index used by autocomplete, context, and docs coverage.",
-  "configuration.fork.kanban.enabled.description": "Enable the project-local Kanban board.",
-  "configuration.fork.autocomplete.enabled.description": "Enable inline code autocomplete suggestions in the VS Code editor.",
-  "configuration.fork.autocomplete.agentName.description": "Agent name to use for DevChamber inline autocomplete. Leave empty to use the active/default agent.",
-  "configuration.fork.commitGeneration.maxFiles.description": "Maximum staged file paths sent to commit-message generation. Extra files are omitted from the generation prompt and reported in the UI.",
-  "configuration.fork.commitGeneration.variantsEnabled.description": "Show one-click commit-message variants after generation."
+  "command.attachExplorerToChat.title": "Attach to DevChamber Chat"
 }
