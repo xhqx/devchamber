@@ -73,6 +73,7 @@ const MOBILE_SETTINGS_PAGES = [
   'sessions',
   'git',
   'magic-prompts',
+  'autocomplete',
   'behavior',
   'mcp',
   'providers',
