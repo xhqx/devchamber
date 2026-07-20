@@ -95,11 +95,13 @@ export const useLiveRepoIndex = ({
     if (!projectRoot) {
       setIndex(null);
       setError(emptyDirectoryError);
+      setIsLoading(false);
       return;
     }
     if (!files.scanRepoIndex) {
       setIndex(null);
       setError(unavailableError);
+      setIsLoading(false);
       return;
     }
 
