@@ -2,13 +2,12 @@ import React from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
+import { useEffectiveDirectory } from '@/hooks/useEffectiveDirectory';
 import { buildRepositoryIndexFromFilesApi } from '@/lib/repoIndex/fromFilesApi';
 import type { RepoLanguage } from '@/lib/repoIndex/schema';
 import type { RepoMapTreeNode, RepoMapViewModel } from '@/lib/repoIndex/viewModel';
 import { buildRepoMapViewModel, filterRepoMapSymbols, filterRepoMapTree } from '@/lib/repoIndex/viewModel';
 import { cn } from '@/lib/utils';
-import { useDirectoryStore } from '@/stores/useDirectoryStore';
-import { useProjectsStore } from '@/stores/useProjectsStore';
 
 const formatBytes = (value: number): string => {
   if (value < 1024) return `${value} B`;
@@ -357,9 +356,8 @@ const RepoMapContent: React.FC<RepoMapContentProps> = ({
 
 export const RepoMapView: React.FC = () => {
   const { files, editor } = useRuntimeAPIs();
-  const activeProject = useProjectsStore((state) => state.getActiveProject());
-  const currentDirectory = useDirectoryStore((state) => state.currentDirectory);
-  const projectRoot = activeProject?.path ?? currentDirectory ?? '';
+  const effectiveDirectory = useEffectiveDirectory();
+  const projectRoot = effectiveDirectory ?? '';
   const [viewModel, setViewModel] = React.useState<RepoMapViewModel | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

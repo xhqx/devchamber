@@ -4,7 +4,6 @@ import { SessionSidebar } from '@/components/session/SessionSidebar';
 import { SessionDialogs } from '@/components/session/SessionDialogs';
 import { ChatView } from '@/components/views/ChatView';
 import { ChatResponseViewToggle } from '@/components/chat/ChatResponseViewToggle';
-import { ProjectContextPanel } from '@/components/layout/RightSidebarTabs';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useViewportStore } from '@/sync/viewport-store';
 import { useSessions, useDirectorySync, useSessionMessages, useSessionMessagesResolved } from '@/sync/sync-context';
@@ -46,6 +45,7 @@ import { useUIStore, type TimeFormatPreference } from '@/stores/useUIStore';
 
 const SettingsView = lazyWithChunkRecovery(() => import('@/components/views/SettingsView').then(m => ({ default: m.SettingsView })));
 const RepoMapView = lazyWithChunkRecovery(() => import('@/components/views/RepoMapView').then(m => ({ default: m.RepoMapView })));
+const ProjectDocsView = lazyWithChunkRecovery(() => import('@/components/views/ProjectDocsView').then(m => ({ default: m.ProjectDocsView })));
 
 const formatTime = (timestamp: number | null, timeFormatPreference: TimeFormatPreference) => {
   if (!timestamp) return '-';
@@ -79,6 +79,7 @@ type VSCodeView = 'sessions' | 'chat' | 'settings' | 'repo-map' | 'docs';
 export const VSCodeLayout: React.FC = () => {
   const { t } = useI18n();
   const runtimeApis = useRuntimeAPIs();
+  const setSettingsPage = useUIStore((state) => state.setSettingsPage);
   useUpdatePolling();
 
   const viewMode = React.useMemo<'sidebar' | 'editor'>(() => {
@@ -251,11 +252,14 @@ export const VSCodeLayout: React.FC = () => {
 
   const handleOpenAgentManager = React.useCallback(() => {
     const vscodeApi = runtimeApis.vscode;
-    if (!vscodeApi) {
+    if (vscodeApi?.openAgentManager) {
+      void vscodeApi.openAgentManager();
       return;
     }
-    void vscodeApi.openAgentManager();
-  }, [runtimeApis.vscode]);
+
+    setSettingsPage('agents');
+    setCurrentView('settings');
+  }, [runtimeApis.vscode, setSettingsPage]);
 
   const handleOpenProjectMap = React.useCallback(() => {
     setCurrentView('repo-map');
@@ -602,7 +606,9 @@ export const VSCodeLayout: React.FC = () => {
             enableSessionSwitcher
           />
           <div className="flex-1 overflow-hidden">
-            <ProjectContextPanel />
+            <React.Suspense fallback={null}>
+              <ProjectDocsView />
+            </React.Suspense>
           </div>
         </div>
       ) : usesExpandedLayout ? (

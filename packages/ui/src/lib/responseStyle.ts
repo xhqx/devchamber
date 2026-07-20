@@ -59,7 +59,9 @@ export const buildResponseStyleInstruction = ({
   }
   if (preset === 'visual') {
     const visual = typeof visualInstructions === 'string' ? visualInstructions.trim() : '';
-    return visual || getResponseStylePresetInstructions('visual');
+    const baseline = getResponseStylePresetInstructions('visual');
+    if (!visual) return baseline;
+    return `${baseline}\n\nUser visual-mode preference:\n${visual}`;
   }
   if (!isResponseStylePreset(preset)) return null;
   return getResponseStylePresetInstructions(preset);
