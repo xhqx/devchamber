@@ -214,9 +214,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('devchamber.openSidebar', async () => {
       // Best-effort: open the container (if available), then focus the chat view.
       try {
-        await vscode.commands.executeCommand('workbench.view.extension.openchamber');
+        await vscode.commands.executeCommand('workbench.view.extension.devchamber');
       } catch (e) {
-        outputChannel?.appendLine(`[DevChamber] workbench.view.extension.openchamber failed: ${e}`);
+        outputChannel?.appendLine(`[DevChamber] workbench.view.extension.devchamber failed: ${e}`);
       }
 
       try {

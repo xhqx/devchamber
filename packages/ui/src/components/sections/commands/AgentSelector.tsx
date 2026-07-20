@@ -167,8 +167,8 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
             ) : (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <div className={cn(
-                            'flex items-center gap-2 px-2 rounded-lg bg-interactive-selection/20 border border-border/20 cursor-pointer hover:bg-interactive-hover/30 h-6 w-fit',
+                        <button type="button" className={cn(
+                            'flex items-center gap-2 px-2 rounded-lg bg-interactive-selection/20 border border-border/20 cursor-pointer hover:bg-interactive-hover/30 h-6 w-fit text-left',
                             className
                         )}>
                             <Icon name="robot-2" className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
@@ -176,7 +176,7 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
                                 {agentName || t('settings.commands.agentSelector.notSelected')}
                             </span>
                             <Icon name="arrow-down-s" className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-                        </div>
+                        </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-w-[300px]" portalToBody={dropdownPortalToBody}>
                         <DropdownMenuItem
