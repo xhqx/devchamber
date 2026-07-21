@@ -1,5 +1,5 @@
 import type { ModelFallbackChain } from './modelFallback';
-import { isModelFallbackPurpose, normalizeModelFallbackChain } from './modelFallback';
+import { isModelFallbackPurpose, normalizeModelFallbackChain, normalizeModelRef } from './modelFallback';
 
 export type ForkFeatureSettings = {
   autoApprove: {
@@ -9,10 +9,12 @@ export type ForkFeatureSettings = {
   };
   docs: {
     requiredOnCodeChange: boolean;
+    agentName: string | null;
   };
   modelFallback: {
     enabled: boolean;
     chain: ModelFallbackChain[];
+    agents: Record<string, ModelFallbackChain['models']>;
   };
   repoIndex: {
     enabled: boolean;
@@ -32,6 +34,10 @@ export type ForkFeatureSettings = {
   commitGeneration: {
     maxFiles: number;
     variantsEnabled: boolean;
+    agentName: string | null;
+  };
+  prSummaries: {
+    agentName: string | null;
   };
 };
 
@@ -43,10 +49,12 @@ export const DEFAULT_FORK_FEATURE_SETTINGS: ForkFeatureSettings = {
   },
   docs: {
     requiredOnCodeChange: true,
+    agentName: null,
   },
   modelFallback: {
     enabled: true,
     chain: [],
+    agents: {},
   },
   repoIndex: {
     enabled: true,
@@ -66,6 +74,10 @@ export const DEFAULT_FORK_FEATURE_SETTINGS: ForkFeatureSettings = {
   commitGeneration: {
     maxFiles: 40,
     variantsEnabled: true,
+    agentName: null,
+  },
+  prSummaries: {
+    agentName: null,
   },
 };
 
@@ -94,6 +106,29 @@ const normalizeOptionalString = (value: unknown): string | null => (
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 );
 
+const normalizeAgentFallbackModels = (value: unknown): Record<string, ModelFallbackChain['models']> => {
+  const input = asRecord(value);
+  const result: Record<string, ModelFallbackChain['models']> = {};
+
+  for (const [agentName, rawModels] of Object.entries(input)) {
+    const name = agentName.trim();
+    if (!name || !Array.isArray(rawModels)) {
+      continue;
+    }
+
+    const models = rawModels
+      .map(normalizeModelRef)
+      .filter((entry): entry is ModelFallbackChain['models'][number] => entry !== null)
+      .slice(0, 3);
+
+    if (models.length > 0) {
+      result[name] = models;
+    }
+  }
+
+  return result;
+};
+
 const normalizePositiveInteger = (value: unknown, fallback: number, min: number, max: number): number => {
   const numeric = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   return Math.max(min, Math.min(max, Math.floor(numeric)));
@@ -112,6 +147,7 @@ export const normalizeForkFeatureSettings = (value: unknown): ForkFeatureSetting
   const kanban = asRecord(input.kanban);
   const autocomplete = asRecord(input.autocomplete);
   const commitGeneration = asRecord(input.commitGeneration);
+  const prSummaries = asRecord(input.prSummaries);
   const flat = input;
 
   const pick = (record: Record<string, unknown>, key: string, flatKey: string): unknown => (
@@ -130,6 +166,7 @@ export const normalizeForkFeatureSettings = (value: unknown): ForkFeatureSetting
     },
     docs: {
       requiredOnCodeChange: normalizeBoolean(pick(docs, 'requiredOnCodeChange', 'fork.docs.requiredOnCodeChange'), DEFAULT_FORK_FEATURE_SETTINGS.docs.requiredOnCodeChange),
+      agentName: normalizeOptionalString(pick(docs, 'agentName', 'fork.docs.agentName')),
     },
     modelFallback: {
       enabled: normalizeBoolean(pick(modelFallback, 'enabled', 'fork.modelFallback.enabled'), DEFAULT_FORK_FEATURE_SETTINGS.modelFallback.enabled),
@@ -140,6 +177,7 @@ export const normalizeForkFeatureSettings = (value: unknown): ForkFeatureSetting
           && isModelFallbackPurpose((entry as { purpose?: unknown }).purpose)
         ))
         .map((entry) => normalizeModelFallbackChain(entry, entry.purpose)),
+      agents: normalizeAgentFallbackModels(pick(modelFallback, 'agents', 'fork.modelFallback.agents')),
     },
     repoIndex: {
       enabled: normalizeBoolean(pick(repoIndex, 'enabled', 'fork.repoIndex.enabled'), DEFAULT_FORK_FEATURE_SETTINGS.repoIndex.enabled),
@@ -190,6 +228,10 @@ export const normalizeForkFeatureSettings = (value: unknown): ForkFeatureSetting
         pick(commitGeneration, 'variantsEnabled', 'fork.commitGeneration.variantsEnabled'),
         DEFAULT_FORK_FEATURE_SETTINGS.commitGeneration.variantsEnabled,
       ),
+      agentName: normalizeOptionalString(pick(commitGeneration, 'agentName', 'fork.commitGeneration.agentName')),
+    },
+    prSummaries: {
+      agentName: normalizeOptionalString(pick(prSummaries, 'agentName', 'fork.prSummaries.agentName')),
     },
   };
 };

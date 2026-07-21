@@ -12,6 +12,9 @@ import { useDeviceInfo } from '@/lib/device';
 import { opencodeClient } from '@/lib/opencode/client';
 import { cn } from '@/lib/utils';
 import { ModelSelector } from './ModelSelector';
+import { normalizeForkFeatureSettings, type ForkFeatureSettings } from '@/lib/forkFeatures';
+import { updateDesktopSettings } from '@/lib/persistence';
+import type { ModelRef } from '@/lib/modelFallback';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
 import { useI18n } from '@/lib/i18n';
@@ -214,10 +217,16 @@ const getVariantOptionsForModel = (
   const model = provider?.models?.find((item) => item.id === parsedModel.modelId);
   return model?.variants ? Object.keys(model.variants) : [];
 };
+
+const persistForkFeatures = async (features: ForkFeatureSettings) => {
+  await updateDesktopSettings({ forkFeatures: normalizeForkFeatureSettings(features) });
+};
 export const AgentsPage: React.FC = () => {
   const { t } = useI18n();
   const { isMobile } = useDeviceInfo();
   const providers = useConfigStore((state) => state.providers) as AgentVariantProvider[];
+  const settingsForkFeatures = useConfigStore((state) => state.settingsForkFeatures);
+  const setSettingsForkFeatures = useConfigStore((state) => state.setSettingsForkFeatures);
   const {
     selectedAgentName,
     getAgentByName,
@@ -272,6 +281,52 @@ export const AgentsPage: React.FC = () => {
   const currentDirectory = useDirectoryStore((state) => state.currentDirectory ?? null);
   const [toolIds, setToolIds] = React.useState<string[]>([]);
   const variantOptions = React.useMemo(() => getVariantOptionsForModel(providers, model), [model, providers]);
+  const updateFeatures = React.useCallback((recipe: (current: ForkFeatureSettings) => ForkFeatureSettings) => {
+    const next = normalizeForkFeatureSettings(recipe(settingsForkFeatures));
+    setSettingsForkFeatures(next);
+    void persistForkFeatures(next).catch((error) => {
+      const message = error instanceof Error ? error.message : 'Failed to save agent fallback settings';
+      toast.error(message);
+    });
+  }, [setSettingsForkFeatures, settingsForkFeatures]);
+  const selectedAgentFallbackModels = React.useMemo(() => {
+    if (!selectedAgentName) {
+      return [];
+    }
+    return settingsForkFeatures.modelFallback.agents[selectedAgentName] ?? [];
+  }, [selectedAgentName, settingsForkFeatures.modelFallback.agents]);
+  const updateAgentFallbackModel = React.useCallback((index: number, modelRef: ModelRef | null) => {
+    if (!selectedAgentName) {
+      return;
+    }
+
+    updateFeatures((current) => {
+      const nextAgents = { ...current.modelFallback.agents };
+      const nextModels = [...(nextAgents[selectedAgentName] ?? [])].slice(0, 3);
+
+      if (modelRef) {
+        nextModels[index] = modelRef;
+      } else {
+        nextModels.splice(index, 1);
+      }
+
+      const compactModels = nextModels.filter(Boolean).slice(0, 3);
+      if (compactModels.length > 0) {
+        nextAgents[selectedAgentName] = compactModels;
+      } else {
+        delete nextAgents[selectedAgentName];
+      }
+
+      return {
+        ...current,
+        modelFallback: {
+          ...current.modelFallback,
+          enabled: true,
+          agents: nextAgents,
+        },
+      };
+    });
+  }, [selectedAgentName, updateFeatures]);
   const hasVariantOptions = variantOptions.length > 0;
   const selectedVariantValue = React.useMemo(() => {
     if (!variant || !variantOptions.includes(variant)) {
@@ -978,6 +1033,41 @@ export const AgentsPage: React.FC = () => {
               </div>
             </div>
 
+          </section>
+        </div>
+
+        {/* Agent model fallback */}
+        <div className="mb-8">
+          <div className="mb-1 px-1">
+            <h3 className="typography-ui-header font-medium text-foreground">
+              Agent model fallback
+            </h3>
+            <p className="typography-meta text-muted-foreground">
+              Exactly three backup models for this agent, tried from top to bottom.
+            </p>
+          </div>
+
+          <section className="px-2 pb-2 pt-0 space-y-0">
+            {[0, 1, 2].map((index) => {
+              const fallbackModel = selectedAgentFallbackModels[index];
+              return (
+                <div key={index} data-settings-item={`agents.fallback-${index + 1}`} className="flex flex-col gap-2 py-1.5 sm:flex-row sm:items-center sm:gap-8">
+                  <div className="flex min-w-0 flex-col sm:w-56 shrink-0">
+                    <span className="typography-ui-label text-foreground">Fallback model {index + 1}</span>
+                  </div>
+                  <div className="flex min-w-0 flex-1 items-center gap-2 sm:w-fit sm:flex-initial">
+                    <ModelSelector
+                      providerId={fallbackModel?.providerID ?? ''}
+                      modelId={fallbackModel?.modelID ?? ''}
+                      placeholder="Not selected"
+                      onChange={(providerId: string, modelId: string) => {
+                        updateAgentFallbackModel(index, providerId && modelId ? { providerID: providerId, modelID: modelId } : null);
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </section>
         </div>
 

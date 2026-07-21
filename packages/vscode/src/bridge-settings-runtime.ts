@@ -277,6 +277,7 @@ const readForkFeaturesFromExtensionConfiguration = (): Record<string, unknown> =
     },
     docs: {
       requiredOnCodeChange: config.get<boolean>('fork.docs.requiredOnCodeChange', true),
+      agentName: config.get<string>('fork.docs.agentName', '') || null,
     },
     modelFallback: {
       enabled: config.get<boolean>('fork.modelFallback.enabled', true),
@@ -295,6 +296,10 @@ const readForkFeaturesFromExtensionConfiguration = (): Record<string, unknown> =
     commitGeneration: {
       maxFiles: config.get<number>('fork.commitGeneration.maxFiles', 40),
       variantsEnabled: config.get<boolean>('fork.commitGeneration.variantsEnabled', true),
+      agentName: config.get<string>('fork.commitGeneration.agentName', '') || null,
+    },
+    prSummaries: {
+      agentName: config.get<string>('fork.prSummaries.agentName', '') || null,
     },
   };
 };

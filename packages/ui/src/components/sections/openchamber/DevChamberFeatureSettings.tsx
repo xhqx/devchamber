@@ -8,7 +8,7 @@ import { updateDesktopSettings } from '@/lib/persistence';
 import type { ForkFeatureSettings } from '@/lib/forkFeatures';
 import { normalizeForkFeatureSettings } from '@/lib/forkFeatures';
 import type { ModelFallbackChain, ModelFallbackPurpose, ModelFallbackRetryReason, ModelRef } from '@/lib/modelFallback';
-import { DEFAULT_MODEL_FALLBACK_RETRY_ON, MODEL_FALLBACK_PURPOSES } from '@/lib/modelFallback';
+import { DEFAULT_MODEL_FALLBACK_RETRY_ON } from '@/lib/modelFallback';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { filterVisibleAgents } from '@/stores/useAgentsStore';
 
@@ -55,13 +55,40 @@ const ToggleRow: React.FC<{
   </label>
 );
 
+const AgentSelectRow: React.FC<{
+  label: string;
+  description: string;
+  value: string | null;
+  agents: Array<{ name: string }>;
+  onChange: (agentName: string | null) => void;
+}> = ({ label, description, value, agents, onChange }) => (
+  <label className="block space-y-1">
+    <span className="typography-meta text-muted-foreground">{label}</span>
+    <Select
+      value={value ?? '__default'}
+      onValueChange={(nextValue) => onChange(nextValue === '__default' ? null : nextValue)}
+    >
+      <SelectTrigger className="h-8 w-full sm:w-64">
+        <SelectValue>{value ?? 'Default active agent'}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__default">Default active agent</SelectItem>
+        {agents.map((agent) => (
+          <SelectItem key={agent.name} value={agent.name}>{agent.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+    <p className="typography-meta text-muted-foreground">{description}</p>
+  </label>
+);
+
 type DevChamberFeatureSettingsSection = 'autocomplete' | 'agents' | 'workspace' | 'commit' | 'autoApprove';
 
 type DevChamberFeatureSettingsProps = {
   sections?: DevChamberFeatureSettingsSection[];
 };
 
-const FallbackModelPicker: React.FC<{
+export const FallbackModelPicker: React.FC<{
   chain: ModelFallbackChain;
   knownModelLabels: Map<string, string>;
   onModelsChange: (models: ModelRef[]) => void;
@@ -145,23 +172,8 @@ export const DevChamberFeatureSettings: React.FC<DevChamberFeatureSettingsProps>
   const settingsForkFeatures = useConfigStore((state) => state.settingsForkFeatures);
   const setSettingsForkFeatures = useConfigStore((state) => state.setSettingsForkFeatures);
   const agentList = useConfigStore((state) => state.agents);
-  const providers = useConfigStore((state) => state.providers);
   const agents = React.useMemo(() => filterVisibleAgents(agentList), [agentList]);
   const [allowedToolsDraft, setAllowedToolsDraft] = React.useState(() => formatCsv(settingsForkFeatures.autoApprove.allowedTools));
-
-  const knownModelLabels = React.useMemo(() => {
-    const labels = new Map<string, string>();
-    providers.forEach((provider) => {
-      const providerModels = Array.isArray(provider.models) ? provider.models : [];
-      providerModels.forEach((model) => {
-        const modelID = typeof model.id === 'string' ? model.id : '';
-        if (!modelID) return;
-        const modelName = typeof model.name === 'string' && model.name.trim() ? model.name.trim() : modelID;
-        labels.set(`${provider.id}/${modelID}`, `${modelName} · ${provider.name ?? provider.id}`);
-      });
-    });
-    return labels;
-  }, [providers]);
 
   React.useEffect(() => {
     setAllowedToolsDraft(formatCsv(settingsForkFeatures.autoApprove.allowedTools));
@@ -175,26 +187,6 @@ export const DevChamberFeatureSettings: React.FC<DevChamberFeatureSettingsProps>
       toast.error(message);
     });
   }, [setSettingsForkFeatures, settingsForkFeatures]);
-
-  const updateFallbackChain = React.useCallback((purpose: ModelFallbackPurpose, patchChain: (chain: ModelFallbackChain) => ModelFallbackChain) => {
-    updateFeatures((current) => {
-      const currentChain = current.modelFallback.chain.find((entry) => entry.purpose === purpose) ?? {
-        purpose,
-        models: [],
-        maxAttempts: 1,
-        retryOn: [...DEFAULT_MODEL_FALLBACK_RETRY_ON],
-      };
-      const nextChain = patchChain(currentChain);
-      const otherChains = current.modelFallback.chain.filter((entry) => entry.purpose !== purpose);
-      return {
-        ...current,
-        modelFallback: {
-          ...current.modelFallback,
-          chain: [...otherChains, nextChain].sort((a, b) => MODEL_FALLBACK_PURPOSES.indexOf(a.purpose) - MODEL_FALLBACK_PURPOSES.indexOf(b.purpose)),
-        },
-      };
-    });
-  }, [updateFeatures]);
 
   const handleAllowedToolsBlur = () => {
     updateFeatures((current) => ({
@@ -225,30 +217,19 @@ export const DevChamberFeatureSettings: React.FC<DevChamberFeatureSettingsProps>
           }))}
         />
 
-        <label className="block space-y-1">
-          <span className="typography-meta text-muted-foreground">Autocomplete agent</span>
-          <Select
-            value={settingsForkFeatures.autocomplete.agentName ?? '__default'}
-            onValueChange={(value) => updateFeatures((current) => ({
-              ...current,
-              autocomplete: {
-                ...current.autocomplete,
-                agentName: value === '__default' ? null : value,
-              },
-            }))}
-          >
-            <SelectTrigger className="h-8 w-full sm:w-64">
-              <SelectValue>{settingsForkFeatures.autocomplete.agentName ?? 'Default active agent'}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__default">Default active agent</SelectItem>
-              {agents.map((agent) => (
-                <SelectItem key={agent.name} value={agent.name}>{agent.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="typography-meta text-muted-foreground">Used by the VS Code inline autocomplete provider when set.</p>
-        </label>
+        <AgentSelectRow
+          label="Autocomplete agent"
+          description="Used by the VS Code inline autocomplete provider when set."
+          value={settingsForkFeatures.autocomplete.agentName}
+          agents={agents}
+          onChange={(agentName) => updateFeatures((current) => ({
+            ...current,
+            autocomplete: {
+              ...current.autocomplete,
+              agentName,
+            },
+          }))}
+        />
 
         <ToggleRow
           checked={settingsForkFeatures.autocomplete.multilineEnabled}
@@ -339,63 +320,51 @@ export const DevChamberFeatureSettings: React.FC<DevChamberFeatureSettingsProps>
       {visibleSections.has('agents') && (
       <section className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-border/40 bg-[var(--surface-elevated)] p-3">
         <div className="space-y-1">
-          <h4 className="typography-ui-label font-medium text-foreground">Agents and models</h4>
-          <p className="typography-meta text-muted-foreground">Keep model fallback with agent behavior.</p>
+          <h4 className="typography-ui-label font-medium text-foreground">Feature agents</h4>
+          <p className="typography-meta text-muted-foreground">Choose which configured agent each DevChamber feature should use.</p>
         </div>
 
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <h5 className="typography-ui-label font-medium text-foreground">Model fallback</h5>
-            <p className="typography-meta text-muted-foreground">
-              Define fallback model chains for chat, commit, PR, autocomplete, and docs purposes.
-            </p>
-          </div>
-          <label className="flex cursor-pointer items-center gap-2 typography-ui-label text-foreground">
-            <Checkbox
-              checked={settingsForkFeatures.modelFallback.enabled}
-              onChange={(checked) => updateFeatures((current) => ({
-                ...current,
-                modelFallback: { ...current.modelFallback, enabled: checked },
-              }))}
-              ariaLabel="Enable model fallback"
-            />
-            Enable model fallback
-          </label>
-          <div className="space-y-3">
-            {MODEL_FALLBACK_PURPOSES.map((purpose) => {
-              const chain = settingsForkFeatures.modelFallback.chain.find((entry) => entry.purpose === purpose) ?? {
-                purpose,
-                models: [],
-                maxAttempts: 1,
-                retryOn: [...DEFAULT_MODEL_FALLBACK_RETRY_ON],
-              };
-              return (
-                <FallbackModelPicker
-                  key={purpose}
-                  chain={chain}
-                  knownModelLabels={knownModelLabels}
-                  onModelsChange={(models) => updateFallbackChain(purpose, (current) => ({
-                    ...current,
-                    models,
-                    maxAttempts: Math.max(1, Math.min(5, Math.max(current.maxAttempts, models.length || 1))),
-                  }))}
-                  onMaxAttemptsChange={(maxAttempts) => updateFallbackChain(purpose, (current) => ({
-                    ...current,
-                    maxAttempts,
-                  }))}
-                  onRetryReasonToggle={(reason, checked) => updateFallbackChain(purpose, (current) => {
-                    const retryOn = checked
-                      ? Array.from(new Set([...current.retryOn, reason]))
-                      : current.retryOn.filter((entry) => entry !== reason);
-                    return {
-                      ...current,
-                      retryOn: retryOn.length > 0 ? retryOn : [reason],
-                    };
-                  })}
-                />
-              );
-            })}
-          </div>
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <AgentSelectRow
+            label="Autocomplete agent"
+            description="Agent used by the VS Code inline autocomplete provider."
+            value={settingsForkFeatures.autocomplete.agentName}
+            agents={agents}
+            onChange={(agentName) => updateFeatures((current) => ({
+              ...current,
+              autocomplete: { ...current.autocomplete, agentName },
+            }))}
+          />
+          <AgentSelectRow
+            label="Commit generation agent"
+            description="Agent used for generated commit messages and variants."
+            value={settingsForkFeatures.commitGeneration.agentName}
+            agents={agents}
+            onChange={(agentName) => updateFeatures((current) => ({
+              ...current,
+              commitGeneration: { ...current.commitGeneration, agentName },
+            }))}
+          />
+          <AgentSelectRow
+            label="PR summary agent"
+            description="Agent used for pull request summaries."
+            value={settingsForkFeatures.prSummaries.agentName}
+            agents={agents}
+            onChange={(agentName) => updateFeatures((current) => ({
+              ...current,
+              prSummaries: { ...current.prSummaries, agentName },
+            }))}
+          />
+          <AgentSelectRow
+            label="Docs/change-notes agent"
+            description="Agent used for documentation checks and change-note writing."
+            value={settingsForkFeatures.docs.agentName}
+            agents={agents}
+            onChange={(agentName) => updateFeatures((current) => ({
+              ...current,
+              docs: { ...current.docs, agentName },
+            }))}
+          />
         </div>
       </section>
       )}
