@@ -12,7 +12,6 @@ import { useDeviceInfo } from '@/lib/device';
 import { opencodeClient } from '@/lib/opencode/client';
 import { cn } from '@/lib/utils';
 import { ModelSelector } from './ModelSelector';
-import { DevChamberFeatureSettings } from '@/components/sections/openchamber/DevChamberFeatureSettings';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
 import { useI18n } from '@/lib/i18n';
@@ -690,11 +689,6 @@ export const AgentsPage: React.FC = () => {
               {isNewAgent ? t('settings.agents.page.subtitle.new') : t('settings.agents.page.subtitle.edit')}
             </p>
           </div>
-        </div>
-
-        {/* Agent feature settings */}
-        <div className="mb-8">
-          <DevChamberFeatureSettings sections={['autocomplete', 'agents']} />
         </div>
 
         {/* Identity & Role */}
