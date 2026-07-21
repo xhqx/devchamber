@@ -1060,6 +1060,7 @@ export const AgentsPage: React.FC = () => {
                       providerId={fallbackModel?.providerID ?? ''}
                       modelId={fallbackModel?.modelID ?? ''}
                       placeholder="Not selected"
+                      requireOpenCodeReady={false}
                       onChange={(providerId: string, modelId: string) => {
                         updateAgentFallbackModel(index, providerId && modelId ? { providerID: providerId, modelID: modelId } : null);
                       }}
