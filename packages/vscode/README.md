@@ -73,14 +73,29 @@ Optional overrides:
 - `OPENCHAMBER_VSCODE_DEV_WORKSPACE=/path/to/workspace bun run vscode:dev`
 - `bun run vscode:dev /path/to/workspace`
 
-To package manually:
+To build, package, and install a local VSIX manually from the repository root:
 
 ```bash
-bun run --cwd packages/vscode build
-cd packages/vscode && bunx vsce package --no-dependencies
+bun install
+bun run vscode:build
+bun run vscode:package
+
+# Installs the packaged DevChamber extension into VS Code.
+code --install-extension packages/vscode/devchamber-*.vsix --force
 ```
 
-Install locally: `code --install-extension packages/vscode/openchamber-*.vsix`
+If `code` is not on your PATH on macOS, use VS Code's bundled CLI directly:
+
+```bash
+/Applications/Visual\ Studio\ Code.app/Contents/Resources/app/bin/code \
+  --install-extension packages/vscode/devchamber-*.vsix --force
+```
+
+Verify the installed version:
+
+```bash
+code --list-extensions --show-versions | grep -i '^xhqx\.devchamber@'
+```
 
 </details>
 
