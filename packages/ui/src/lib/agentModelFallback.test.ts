@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { DEFAULT_FORK_FEATURE_SETTINGS, type ForkFeatureSettings } from './forkFeatures';
-import { resolveAgentChatFallbackChain } from './agentModelFallback';
+import { resolveAgentChatFallbackChain, resolveAgentFallbackChain } from './agentModelFallback';
 
 const settingsWithAgents = (agents: ForkFeatureSettings['modelFallback']['agents']): ForkFeatureSettings => ({
   ...DEFAULT_FORK_FEATURE_SETTINGS,
@@ -30,6 +30,19 @@ describe('resolveAgentChatFallbackChain', () => {
       'anthropic/fallback-2',
       'openai/fallback-3',
     ]);
+  });
+
+  test('returns a fallback chain for any agent-backed feature purpose', () => {
+    const chains = resolveAgentFallbackChain(settingsWithAgents({
+      reviewer: [
+        { providerID: 'openrouter', modelID: 'backup-a' },
+      ],
+    }), 'reviewer', 'pr');
+
+    expect(chains).toHaveLength(1);
+    expect(chains[0]?.purpose).toBe('pr');
+    expect(chains[0]?.maxAttempts).toBe(2);
+    expect(chains[0]?.retryOn).toContain('auth_error');
   });
 
   test('does not create chat fallback when disabled or agent has no configured backups', () => {

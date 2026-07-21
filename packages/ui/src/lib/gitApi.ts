@@ -7,6 +7,8 @@ import { useSelectionStore } from '@/sync/selection-store';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { getRegisteredRuntimeAPIs } from '@/contexts/runtimeAPIRegistry';
 import { buildCommitGenerationPromptContext, type CommitGenerationDiffEntry } from './commitGenerationContext';
+import { resolveAgentFallbackChain } from './agentModelFallback';
+import { runWithModelFallback } from './runWithModelFallback';
 
 export type {
   GitStatus,
@@ -245,7 +247,7 @@ export async function generateCommitMessage(
   options?: { zenModel?: string; providerId?: string; modelId?: string }
 ): Promise<{ message: import('./api/types').GeneratedCommitMessage }> {
   const startedAt = Date.now();
-  const generationSession = await resolveGenerationSessionContext(options);
+  const generationSession = await resolveGenerationSessionContext(options, 'commit');
 
   console.info('[git-generation][browser] request', {
     transport: 'session',
@@ -314,7 +316,7 @@ export async function generatePullRequestDescription(
   payload: { base: string; head: string; context?: string; zenModel?: string; providerId?: string; modelId?: string }
 ): Promise<import('./api/types').GeneratedPullRequestDescription> {
   const startedAt = Date.now();
-  const generationSession = await resolveGenerationSessionContext();
+  const generationSession = await resolveGenerationSessionContext(payload, 'pr');
 
   const commitLog = await getGitLog(directory, {
     from: payload.base,
@@ -416,6 +418,7 @@ type SessionGenerationContext = {
 };
 
 type GenerationModelOptions = { zenModel?: string; providerId?: string; modelId?: string };
+type StructuredGenerationKind = 'commit' | 'pr';
 
 const GENERATION_CONFIG_ERROR = 'No default provider or model configured. Please select a provider and model in settings first.';
 
@@ -436,8 +439,19 @@ const applyGenerationModelOptions = (
   };
 };
 
-async function resolveGenerationSessionContext(options?: GenerationModelOptions): Promise<SessionGenerationContext> {
-  const activeSession = resolveSessionGenerationContext();
+const resolveConfiguredFeatureAgentName = (kind: StructuredGenerationKind): string | null => {
+  const settings = useConfigStore.getState().settingsForkFeatures;
+  return kind === 'commit'
+    ? settings.commitGeneration.agentName
+    : settings.prSummaries.agentName;
+};
+
+async function resolveGenerationSessionContext(
+  options?: GenerationModelOptions,
+  kind?: StructuredGenerationKind,
+): Promise<SessionGenerationContext> {
+  const featureAgentName = kind ? resolveConfiguredFeatureAgentName(kind) : null;
+  const activeSession = resolveSessionGenerationContext(featureAgentName ?? undefined);
   if (activeSession) {
     return applyGenerationModelOptions(activeSession, options);
   }
@@ -455,28 +469,28 @@ async function resolveGenerationSessionContext(options?: GenerationModelOptions)
   const createdDraftSession = await materializeOpenDraftSession({
     providerID: config.currentProviderId,
     modelID: config.currentModelId,
-    agent: config.currentAgentName || undefined,
+    agent: featureAgentName || config.currentAgentName || undefined,
     variant: config.currentVariant || undefined,
   });
 
   if (!createdDraftSession) {
-    const retry = resolveSessionGenerationContext();
+    const retry = resolveSessionGenerationContext(featureAgentName ?? undefined);
     if (retry) {
-      return retry;
+      return applyGenerationModelOptions(retry, options);
     }
     throw new Error('Failed to create session for generation');
   }
 
-  return {
+  return applyGenerationModelOptions({
     sessionId: createdDraftSession.sessionId,
     providerID: config.currentProviderId,
     modelID: config.currentModelId,
     agent: createdDraftSession.agent,
     variant: config.currentVariant || undefined,
-  };
+  }, options);
 }
 
-const resolveSessionGenerationContext = (): SessionGenerationContext | null => {
+const resolveSessionGenerationContext = (agentOverride?: string): SessionGenerationContext | null => {
   const sessionId = useSessionUIStore.getState().currentSessionId;
   if (!sessionId) {
     return null;
@@ -486,7 +500,7 @@ const resolveSessionGenerationContext = (): SessionGenerationContext | null => {
   const config = useConfigStore.getState();
   const lastChoice = useSessionUIStore.getState().getLastUserChoice(sessionId);
 
-  const agent = selection.getSessionAgentSelection(sessionId) || lastChoice?.agent || config.currentAgentName || undefined;
+  const agent = agentOverride || selection.getSessionAgentSelection(sessionId) || lastChoice?.agent || config.currentAgentName || undefined;
   const sessionModel = selection.getSessionModelSelection(sessionId);
   const agentModel = agent ? selection.getAgentModelForSession(sessionId, agent) : null;
   const lastChoiceModel = lastChoice?.providerID && lastChoice.modelID
@@ -533,7 +547,7 @@ const runStructuredGenerationInActiveSession = async ({
   visiblePrompt: string;
   hiddenPrompt?: string;
   generationSession: SessionGenerationContext;
-  kind: 'commit' | 'pr';
+  kind: StructuredGenerationKind;
 }): Promise<Record<string, unknown>> => {
   const requestStartedAt = Date.now();
   console.info('[git-generation][browser] runStructuredGenerationInActiveSession start', {
@@ -545,7 +559,6 @@ const runStructuredGenerationInActiveSession = async ({
     agent: generationSession.agent,
     variant: generationSession.variant,
   });
-  const trimmedDirectory = typeof directory === 'string' ? directory.trim() : '';
   const visiblePromptText = typeof visiblePrompt === 'string' ? visiblePrompt.trim() : '';
   const hiddenPromptText = typeof hiddenPrompt === 'string' ? hiddenPrompt.trim() : '';
   const promptParts: Array<{ type: 'text'; text: string; synthetic?: boolean }> = [];
@@ -565,6 +578,59 @@ const runStructuredGenerationInActiveSession = async ({
 
   requestChatForceScrollBottom(generationSession.sessionId);
 
+  const generation = await runWithModelFallback({
+    purpose: kind,
+    primaryModel: {
+      providerID: generationSession.providerID,
+      modelID: generationSession.modelID,
+    },
+    chains: resolveAgentFallbackChain(
+      useConfigStore.getState().settingsForkFeatures,
+      generationSession.agent,
+      kind,
+    ),
+    run: async (model) => runStructuredGenerationAttempt({
+      directory,
+      promptParts,
+      generationSession: {
+        ...generationSession,
+        providerID: model.providerID,
+        modelID: model.modelID,
+      },
+      kind,
+      requestStartedAt,
+    }),
+  });
+
+  if (generation.failures.length > 0) {
+    console.warn('[git-generation][browser] model fallback used', {
+      kind,
+      sessionId: generationSession.sessionId,
+      agent: generationSession.agent,
+      attempts: generation.attempts,
+      selectedProviderID: generation.model.providerID,
+      selectedModelID: generation.model.modelID,
+      failures: generation.failures,
+    });
+  }
+
+  return generation.result;
+};
+
+const runStructuredGenerationAttempt = async ({
+  directory,
+  promptParts,
+  generationSession,
+  kind,
+  requestStartedAt,
+}: {
+  directory: string;
+  promptParts: Array<{ type: 'text'; text: string; synthetic?: boolean }>;
+  generationSession: SessionGenerationContext;
+  kind: StructuredGenerationKind;
+  requestStartedAt: number;
+}): Promise<Record<string, unknown>> => {
+  const trimmedDirectory = typeof directory === 'string' ? directory.trim() : '';
   const response = await opencodeClient.withDirectory(directory, async () => {
     return opencodeClient.getApiClient().session.prompt({
       sessionID: generationSession.sessionId,
@@ -591,6 +657,8 @@ const runStructuredGenerationInActiveSession = async ({
     console.error('[git-generation][browser] invalid JSON output', {
       kind,
       sessionId: generationSession.sessionId,
+      providerID: generationSession.providerID,
+      modelID: generationSession.modelID,
       elapsedMs: Date.now() - requestStartedAt,
       finish: info?.finish,
       assistantText,

@@ -18,6 +18,8 @@ import { getFusionSessionTitle, parseMultiRunSessionTitle } from '@/lib/multirun
 import { renderMagicPrompt } from '@/lib/magicPrompts';
 import { AgentSelector } from './AgentSelector';
 import { ModelMultiSelect, generateInstanceId, type ModelSelectionWithId } from './ModelMultiSelect';
+import { resolveAgentFallbackChain } from '@/lib/agentModelFallback';
+import { runWithModelFallback } from '@/lib/runWithModelFallback';
 
 type FusionSource = {
   session: Session;
@@ -166,20 +168,41 @@ export function MultiRunFusionDialog({
       useSessionUIStore.getState().setCurrentSession(fusionSession.id, directory);
       onOpenChange(false);
 
-      await opencodeClient.sendMessage({
-        id: fusionSession.id,
-        providerID,
-        modelID,
-        variant: variant || undefined,
-        agent: agent || undefined,
-        text: visiblePrompt,
-        additionalParts: [
-          { text: instructionsPrompt, synthetic: true },
-          ...usableSources.map((item, index) => ({ text: buildSourcePart(item.source, item.text, index), synthetic: true })),
-          { text: '\n\n--- FUSION INPUTS END ---\nNow write the final fused answer.', synthetic: true },
-        ],
-        directory: directory ?? opencodeClient.getDirectory(),
+      const agentName = agent || undefined;
+      const fallbackChains = resolveAgentFallbackChain(
+        useConfigStore.getState().settingsForkFeatures,
+        agentName,
+        'chat',
+      );
+      const generation = await runWithModelFallback({
+        purpose: 'chat',
+        primaryModel: { providerID, modelID, ...(variant ? { variant } : {}) },
+        chains: fallbackChains,
+        run: (model) => opencodeClient.sendMessage({
+          id: fusionSession.id,
+          providerID: model.providerID,
+          modelID: model.modelID,
+          variant: model.variant ?? (variant || undefined),
+          agent: agentName,
+          text: visiblePrompt,
+          additionalParts: [
+            { text: instructionsPrompt, synthetic: true },
+            ...usableSources.map((item, index) => ({ text: buildSourcePart(item.source, item.text, index), synthetic: true })),
+            { text: '\n\n--- FUSION INPUTS END ---\nNow write the final fused answer.', synthetic: true },
+          ],
+          directory: directory ?? opencodeClient.getDirectory(),
+        }),
       });
+      if (generation.failures.length > 0) {
+        console.warn('[MultiRunFusion] model fallback used', {
+          sessionID: fusionSession.id,
+          agent: agentName,
+          attempts: generation.attempts,
+          selectedProviderID: generation.model.providerID,
+          selectedModelID: generation.model.modelID,
+          failures: generation.failures,
+        });
+      }
     } catch (error) {
       console.error('[MultiRunFusion] Failed to start fusion', error);
       toast.error(t('multirun.fusion.toast.failed'));

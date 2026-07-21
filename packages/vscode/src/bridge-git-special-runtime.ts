@@ -35,6 +35,8 @@ type BridgeSdkResult<T> = {
   response?: { status?: number };
 };
 
+type BridgeModelRef = { providerID: string; modelID: string };
+
 const formatBridgeSdkError = (error: unknown): string => {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
@@ -76,6 +78,89 @@ const readStringField = (value: unknown, key: string): string => {
   const record = value as Record<string, unknown>;
   const candidate = record[key];
   return typeof candidate === 'string' ? candidate.trim() : '';
+};
+
+const readRecordField = (value: unknown, key: string): Record<string, unknown> => {
+  if (!value || typeof value !== 'object') return {};
+  const candidate = (value as Record<string, unknown>)[key];
+  return candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+    ? candidate as Record<string, unknown>
+    : {};
+};
+
+const normalizeBridgeModelRef = (value: unknown): BridgeModelRef | null => {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const providerID = typeof record.providerID === 'string' ? record.providerID.trim() : '';
+  const modelID = typeof record.modelID === 'string' ? record.modelID.trim() : '';
+  return providerID && modelID ? { providerID, modelID } : null;
+};
+
+const resolveBridgeAgentFallbackModels = (
+  settings: Record<string, unknown>,
+  agentName: string | null | undefined,
+): BridgeModelRef[] => {
+  const trimmedAgentName = typeof agentName === 'string' ? agentName.trim() : '';
+  if (!trimmedAgentName) return [];
+
+  const forkFeatures = readRecordField(settings, 'forkFeatures');
+  const modelFallback = readRecordField(forkFeatures, 'modelFallback');
+  if (modelFallback.enabled === false) return [];
+
+  const agents = readRecordField(modelFallback, 'agents');
+  const rawModels = agents[trimmedAgentName];
+  if (!Array.isArray(rawModels)) return [];
+
+  return rawModels
+    .map(normalizeBridgeModelRef)
+    .filter((model): model is BridgeModelRef => model !== null)
+    .slice(0, 3);
+};
+
+const resolveBridgeFeatureAgentName = (settings: Record<string, unknown>, feature: 'commitGeneration' | 'prSummaries' | 'docs'): string | null => {
+  const forkFeatures = readRecordField(settings, 'forkFeatures');
+  const featureSettings = readRecordField(forkFeatures, feature);
+  const agentName = typeof featureSettings.agentName === 'string' ? featureSettings.agentName.trim() : '';
+  return agentName.length > 0 ? agentName : null;
+};
+
+const runBridgeGenerationWithModelFallback = async ({
+  primaryModel,
+  fallbackModels,
+  run,
+}: {
+  primaryModel: BridgeModelRef;
+  fallbackModels: BridgeModelRef[];
+  run: (model: BridgeModelRef) => Promise<string>;
+}): Promise<{ raw: string; model: BridgeModelRef; attempts: number }> => {
+  const seen = new Set<string>();
+  const models = [primaryModel, ...fallbackModels].filter((model) => {
+    const key = `${model.providerID}/${model.modelID}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  let lastError: unknown;
+
+  for (const [index, model] of models.entries()) {
+    try {
+      return { raw: await run(model), model, attempts: index + 1 };
+    } catch (error) {
+      lastError = error;
+      if (index === models.length - 1) {
+        throw error;
+      }
+      console.warn('[bridge-git-generation] model fallback after failed agent firing', {
+        failedProviderID: model.providerID,
+        failedModelID: model.modelID,
+        nextProviderID: models[index + 1]?.providerID,
+        nextModelID: models[index + 1]?.modelID,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError || 'Generation failed'));
 };
 
 const fetchBridgeGitModelCatalog = async (
@@ -178,6 +263,7 @@ const generateBridgeTextWithSessionFlow = async ({
   prompt,
   providerID,
   modelID,
+  agentName,
   authHeaders,
 }: {
   apiUrl: string;
@@ -185,6 +271,7 @@ const generateBridgeTextWithSessionFlow = async ({
   prompt: string;
   providerID: string;
   modelID: string;
+  agentName?: string | null;
   authHeaders?: Record<string, string>;
 }): Promise<string> => {
   const client = createBridgeGitClient(apiUrl, authHeaders);
@@ -215,6 +302,7 @@ const generateBridgeTextWithSessionFlow = async ({
           providerID,
           modelID,
         },
+        ...(agentName ? { agent: agentName } : {}),
         parts: [{ type: 'text', text: prompt }],
       }, { signal: AbortSignal.timeout(remainingMs()) }),
       'session.promptAsync'
@@ -339,20 +427,35 @@ export async function handleSpecialGitBridgeMessage(
         }
 
         const settings = deps.readSettings(ctx) as Record<string, unknown>;
-        const { providerID, modelID } = await resolveBridgeGitGenerationModel(
+        const primaryModel = await resolveBridgeGitGenerationModel(
           { providerId, modelId, zenModel: payloadZenModel },
           settings,
           apiUrl,
           ctx?.manager?.getOpenCodeAuthHeaders()
         );
-        const raw = await generateBridgeTextWithSessionFlow({
-          apiUrl,
-          directory,
-          prompt,
-          providerID,
-          modelID,
-          authHeaders: ctx?.manager?.getOpenCodeAuthHeaders(),
+        const agentName = resolveBridgeFeatureAgentName(settings, 'prSummaries');
+        const generation = await runBridgeGenerationWithModelFallback({
+          primaryModel,
+          fallbackModels: resolveBridgeAgentFallbackModels(settings, agentName),
+          run: (model) => generateBridgeTextWithSessionFlow({
+            apiUrl,
+            directory,
+            prompt,
+            providerID: model.providerID,
+            modelID: model.modelID,
+            agentName,
+            authHeaders: ctx?.manager?.getOpenCodeAuthHeaders(),
+          }),
         });
+        const raw = generation.raw;
+        if (generation.attempts > 1) {
+          console.warn('[bridge-git-generation] PR description used fallback model', {
+            attempts: generation.attempts,
+            providerID: generation.model.providerID,
+            modelID: generation.model.modelID,
+            agentName,
+          });
+        }
         if (!raw) {
           return { id, type, success: false, error: 'No PR description returned by generator' };
         }

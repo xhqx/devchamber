@@ -113,4 +113,64 @@ describe('bridge git special runtime', () => {
     }, expect.objectContaining({ signal: expect.any(AbortSignal) }));
     expect(sdkClient.session.delete).toHaveBeenCalledWith({ sessionID: 'ses_1' }, expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
+
+  it('falls back to the configured PR agent backup model when firing fails', async () => {
+    let createCount = 0;
+    sdkClient.session.create.mockImplementation(async () => ({
+      data: { id: `ses_${++createCount}` },
+      error: undefined,
+    }));
+    sdkClient.session.promptAsync
+      .mockImplementationOnce(async () => ({
+        data: undefined,
+        error: { message: 'invalid api key' },
+        response: { status: 401 },
+      }))
+      .mockImplementationOnce(async () => ({ data: true, error: undefined }));
+
+    const response = await handleSpecialGitBridgeMessage({
+      id: 'fallback',
+      type: 'api:git/pr-description',
+      payload: {
+        directory: '/repo',
+        base: 'main',
+        head: 'feature',
+        providerId: 'anthropic',
+        modelId: 'claude-sonnet-4-5',
+      },
+    }, {
+      manager: {
+        getApiUrl: () => 'http://opencode.test',
+        getOpenCodeAuthHeaders: () => ({ Authorization: 'Bearer test' }),
+      },
+    }, {
+      readSettings: () => ({
+        forkFeatures: {
+          prSummaries: { agentName: 'reviewer' },
+          modelFallback: {
+            enabled: true,
+            agents: {
+              reviewer: [{ providerID: 'openrouter', modelID: 'fallback-pr' }],
+            },
+          },
+        },
+      }),
+      execGit: mock(),
+    });
+
+    expect(response?.success).toBe(true);
+    expect(sdkClient.session.promptAsync).toHaveBeenCalledTimes(2);
+    expect(sdkClient.session.promptAsync.mock.calls[0][0]).toEqual(expect.objectContaining({
+      sessionID: 'ses_1',
+      agent: 'reviewer',
+      model: { providerID: 'anthropic', modelID: 'claude-sonnet-4-5' },
+    }));
+    expect(sdkClient.session.promptAsync.mock.calls[1][0]).toEqual(expect.objectContaining({
+      sessionID: 'ses_2',
+      agent: 'reviewer',
+      model: { providerID: 'openrouter', modelID: 'fallback-pr' },
+    }));
+    expect(sdkClient.session.delete).toHaveBeenCalledWith({ sessionID: 'ses_1' }, expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    expect(sdkClient.session.delete).toHaveBeenCalledWith({ sessionID: 'ses_2' }, expect.objectContaining({ signal: expect.any(AbortSignal) }));
+  });
 });

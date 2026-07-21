@@ -20,6 +20,8 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { getSyncMessages, getSyncParts, getSyncSessionStatus, registerSessionDirectory } from '@/sync/sync-refs';
 import { markPendingUserSendAnimation } from '@/lib/userSendAnimation';
 import { getRuntimeKey } from '@/lib/runtime-switch';
+import { resolveAgentFallbackChain } from '@/lib/agentModelFallback';
+import { runWithModelFallback } from '@/lib/runWithModelFallback';
 
 const HANDOFF_TIMEOUT_MS = 180_000;
 const HANDOFF_POLL_MS = 400;
@@ -373,6 +375,11 @@ const sendPlainMessage = async (
   }
   markPendingUserSendAnimation(sessionID);
   let sentMessageID: string | null = null;
+  const fallbackChains = resolveAgentFallbackChain(
+    useConfigStore.getState().settingsForkFeatures,
+    resolved.agent,
+    'chat',
+  );
   await optimisticSend({
     sessionId: sessionID,
     content: text,
@@ -387,17 +394,34 @@ const sendPlainMessage = async (
     onOptimisticInsert: () => requestChatForceScrollBottom(sessionID),
     send: (messageID) => {
       assertAutoReviewRuntimeStillCurrent(expectedRuntimeKey);
-      return opencodeClient.sendMessage({
-        id: sessionID,
-        directory,
-        providerID: resolved.providerID,
-        modelID: resolved.modelID,
-        agent: resolved.agent,
-        variant: resolved.variant,
-        text,
-        additionalParts,
-        messageId: messageID,
-      }).then(() => undefined);
+      return runWithModelFallback({
+        purpose: 'chat',
+        primaryModel: { providerID: resolved.providerID, modelID: resolved.modelID, ...(resolved.variant ? { variant: resolved.variant } : {}) },
+        chains: fallbackChains,
+        run: (model) => opencodeClient.sendMessage({
+          id: sessionID,
+          directory,
+          providerID: model.providerID,
+          modelID: model.modelID,
+          agent: resolved.agent,
+          variant: model.variant ?? resolved.variant,
+          text,
+          additionalParts,
+          messageId: messageID,
+        }),
+      }).then((generation) => {
+        if (generation.failures.length > 0) {
+          console.warn('[review-flow] model fallback used', {
+            sessionID,
+            agent: resolved.agent,
+            attempts: generation.attempts,
+            selectedProviderID: generation.model.providerID,
+            selectedModelID: generation.model.modelID,
+            failures: generation.failures,
+          });
+        }
+        return undefined;
+      });
     },
   });
   if (!sentMessageID) throw new Error('Failed to prepare review flow message');

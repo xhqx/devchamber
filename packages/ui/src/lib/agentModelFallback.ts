@@ -6,9 +6,10 @@ const normalizeAgentName = (agent: string | null | undefined): string | null => 
   return trimmed.length > 0 ? trimmed : null;
 };
 
-export const resolveAgentChatFallbackChain = (
+export const resolveAgentFallbackChain = (
   settings: ForkFeatureSettings,
   agent: string | null | undefined,
+  purpose: ModelFallbackChain['purpose'],
 ): ModelFallbackChain[] => {
   if (!settings.modelFallback.enabled) {
     return [];
@@ -25,9 +26,14 @@ export const resolveAgentChatFallbackChain = (
   }
 
   return [{
-    purpose: 'chat',
+    purpose,
     models,
     maxAttempts: models.length + 1,
     retryOn: [...DEFAULT_MODEL_FALLBACK_RETRY_ON],
   }];
 };
+
+export const resolveAgentChatFallbackChain = (
+  settings: ForkFeatureSettings,
+  agent: string | null | undefined,
+): ModelFallbackChain[] => resolveAgentFallbackChain(settings, agent, 'chat');
