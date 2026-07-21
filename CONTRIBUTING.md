@@ -51,6 +51,23 @@ bun run vscode:package  # Create a local .vsix package
 
 Example: `OPENCHAMBER_VSCODE_BIN=cursor bun run vscode:dev`.
 
+To build a DevChamber VSIX and install it into your local VS Code:
+
+```bash
+bun install
+bun run vscode:build
+bun run vscode:package
+code --install-extension packages/vscode/devchamber-*.vsix --force
+code --list-extensions --show-versions | grep -i '^xhqx\.devchamber@'
+```
+
+If the `code` command is not on PATH on macOS, use VS Code's bundled CLI:
+
+```bash
+/Applications/Visual\ Studio\ Code.app/Contents/Resources/app/bin/code \
+  --install-extension packages/vscode/devchamber-*.vsix --force
+```
+
 ### Shared UI (`packages/ui`)
 
 No standalone app server. This is a source-level library used by Web, Desktop, and VS Code.
