@@ -6,7 +6,7 @@ export type ModelRef = {
 
 export type ModelFallbackPurpose = 'chat' | 'commit' | 'pr' | 'autocomplete' | 'docs';
 
-export type ModelFallbackRetryReason = 'timeout' | 'rate_limit' | 'server_error' | 'invalid_json';
+export type ModelFallbackRetryReason = 'timeout' | 'rate_limit' | 'server_error' | 'invalid_json' | 'auth_error';
 
 export type ModelFallbackChain = {
   purpose: ModelFallbackPurpose;
@@ -20,6 +20,7 @@ export const DEFAULT_MODEL_FALLBACK_RETRY_ON: ModelFallbackRetryReason[] = [
   'rate_limit',
   'server_error',
   'invalid_json',
+  'auth_error',
 ];
 
 export const MODEL_FALLBACK_PURPOSES: ModelFallbackPurpose[] = [

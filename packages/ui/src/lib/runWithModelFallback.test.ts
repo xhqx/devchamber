@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { ModelFallbackExhaustedError, resolveFallbackModels, runWithModelFallback } from './runWithModelFallback';
+import { ModelFallbackExhaustedError, defaultClassifyModelError, resolveFallbackModels, runWithModelFallback } from './runWithModelFallback';
 import type { ModelFallbackChain, ModelRef } from './modelFallback';
 
 const primary: ModelRef = { providerID: 'p1', modelID: 'm1' };
@@ -89,5 +89,32 @@ describe('runWithModelFallback', () => {
       primaryModel: primary,
       chains: [{ ...chain, models: [primary, backup], maxAttempts: 3 }],
     })).toEqual([primary, backup]);
+  });
+
+  test('classifies invalid API key errors as retryable auth errors', async () => {
+    const authChain: ModelFallbackChain = {
+      ...chain,
+      retryOn: ['auth_error'],
+    };
+    const calls: string[] = [];
+
+    const result = await runWithModelFallback({
+      purpose: 'commit',
+      primaryModel: primary,
+      chains: [authChain],
+      run: async (model) => {
+        calls.push(model.modelID);
+        if (model.modelID === 'm1') {
+          throw new Error('Opencode failed to send message with error: Invalid API key.');
+        }
+        return 'fallback-ok';
+      },
+    });
+
+    expect(defaultClassifyModelError(new Error('Invalid API key.'))).toBe('auth_error');
+    expect(calls).toEqual(['m1', 'm2']);
+    expect(result.result).toBe('fallback-ok');
+    expect(result.model).toEqual(backup);
+    expect(result.failures[0]?.reason).toBe('auth_error');
   });
 });

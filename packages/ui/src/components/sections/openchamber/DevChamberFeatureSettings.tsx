@@ -36,6 +36,7 @@ const RETRY_REASON_LABELS: Record<ModelFallbackRetryReason, string> = {
   rate_limit: 'Rate limit',
   server_error: 'Server error',
   invalid_json: 'Invalid JSON',
+  auth_error: 'Authentication/API key error',
 };
 
 const modelKey = (model: Pick<ModelRef, 'providerID' | 'modelID'>): string => `${model.providerID}/${model.modelID}`;

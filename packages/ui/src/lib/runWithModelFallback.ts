@@ -43,6 +43,16 @@ export const defaultClassifyModelError = (error: unknown): ModelFallbackRetryRea
   if (message.includes('invalid json') || message.includes('parse')) {
     return 'invalid_json';
   }
+  if (
+    message.includes('invalid api key')
+    || message.includes('api key')
+    || message.includes('unauthorized')
+    || message.includes('authentication')
+    || message.includes('401')
+    || message.includes('403')
+  ) {
+    return 'auth_error';
+  }
   if (message.includes('500') || message.includes('502') || message.includes('503') || message.includes('server')) {
     return 'server_error';
   }

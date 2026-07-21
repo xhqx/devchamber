@@ -64,6 +64,8 @@ import { getAttachedSessionDirectory } from "./session-worktree-contract"
 import { setSessionOpener } from "./session-navigation"
 import { getRuntimeKey } from "@/lib/runtime-switch"
 import { rememberRuntimeLiveStatus } from "./runtime-live-memory"
+import { runWithModelFallback } from "@/lib/runWithModelFallback"
+import { resolveAgentChatFallbackChain } from "@/lib/agentModelFallback"
 
 export type { AttachedFile }
 
@@ -86,6 +88,10 @@ export function routeMessage(params: {
   delivery?: 'steer'
 }): Promise<void> {
   const requestDirectory = params.directory ?? undefined
+  const fallbackChains = resolveAgentChatFallbackChain(
+    useConfigStore.getState().settingsForkFeatures,
+    params.agent,
+  )
   if (params.inputMode === "shell") {
     return opencodeClient.shellSession({
       sessionId: params.sessionId,
@@ -135,17 +141,22 @@ export function routeMessage(params: {
         agent: params.agent,
         directory: requestDirectory,
         files: params.files,
-        send: (messageID) => opencodeClient.sendCommand({
-          id: params.sessionId,
-          providerID: params.providerID,
-          modelID: params.modelID,
-          command: cmdName,
-          arguments: commandArgumentsWithReminders,
-          agent: params.agent,
-          variant: params.variant,
-          files: params.files,
-          messageId: messageID,
-          directory: requestDirectory,
+        send: (messageID) => runWithModelFallback({
+          purpose: 'chat',
+          primaryModel: { providerID: params.providerID, modelID: params.modelID, ...(params.variant ? { variant: params.variant } : {}) },
+          chains: fallbackChains,
+          run: (model) => opencodeClient.sendCommand({
+            id: params.sessionId,
+            providerID: model.providerID,
+            modelID: model.modelID,
+            command: cmdName,
+            arguments: commandArgumentsWithReminders,
+            agent: params.agent,
+            variant: model.variant ?? params.variant,
+            files: params.files,
+            messageId: messageID,
+            directory: requestDirectory,
+          }).then(() => {}),
         }).then(() => {}),
       })
     }
@@ -160,19 +171,24 @@ export function routeMessage(params: {
     agent: params.agent,
     directory: requestDirectory,
     files: params.files,
-    send: (messageID) => opencodeClient.sendMessage({
-      id: params.sessionId,
-      providerID: params.providerID,
-      modelID: params.modelID,
-      text: params.content,
-      agent: params.agent,
-      agentMentions: params.agentMentionName ? [{ name: params.agentMentionName }] : undefined,
-      variant: params.variant,
-      files: params.files,
-      additionalParts: params.additionalParts,
-      delivery: params.delivery,
-      messageId: messageID,
-      directory: requestDirectory,
+    send: (messageID) => runWithModelFallback({
+      purpose: 'chat',
+      primaryModel: { providerID: params.providerID, modelID: params.modelID, ...(params.variant ? { variant: params.variant } : {}) },
+      chains: fallbackChains,
+      run: (model) => opencodeClient.sendMessage({
+        id: params.sessionId,
+        providerID: model.providerID,
+        modelID: model.modelID,
+        text: params.content,
+        agent: params.agent,
+        agentMentions: params.agentMentionName ? [{ name: params.agentMentionName }] : undefined,
+        variant: model.variant ?? params.variant,
+        files: params.files,
+        additionalParts: params.additionalParts,
+        delivery: params.delivery,
+        messageId: messageID,
+        directory: requestDirectory,
+      }).then(() => {}),
     }).then(() => {}),
   })
 }
