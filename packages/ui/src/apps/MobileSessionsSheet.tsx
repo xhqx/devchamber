@@ -947,17 +947,20 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
     normalizedQuery && searchSessionMatches.length === 0 && searchProjectMatches.length === 0;
   const canEditOrder = !normalizedQuery && projectsMeta.length > 1;
 
+  const headerIconButtonClass = 'size-9 rounded-xl p-0 [&>svg]:size-4';
+
   const editToggle = canEditOrder ? (
     <Button
       type="button"
       variant="chip"
-      size="sm"
+      size="icon"
+      className={headerIconButtonClass}
       aria-label={editingOrder ? t('mobile.sessions.doneEditing') : t('mobile.sessions.editOrder')}
       aria-pressed={editingOrder}
       onClick={() => setEditingOrder((value) => !value)}
       style={{ touchAction: 'manipulation' }}
     >
-      {editingOrder ? <RiCheckLine className="size-4" /> : <RiEdit2Line className="size-4" />}
+      {editingOrder ? <RiCheckLine /> : <RiEdit2Line />}
     </Button>
   ) : null;
 
@@ -966,13 +969,14 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       <Button
         type="button"
         variant="default"
-        size="sm"
+        size="icon"
+        className={headerIconButtonClass}
         aria-label={t('mobile.sessions.newChat')}
+        title={t('mobile.sessions.newChat')}
         onClick={handleStartNewChat}
         style={{ touchAction: 'manipulation' }}
       >
-        <RiAddLine className="size-4" />
-        {t('mobile.sessions.newChat')}
+        <RiAddLine />
       </Button>
     ) : null;
 
@@ -980,22 +984,23 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
     <Button
       type="button"
       variant="chip"
-      size="sm"
+      size="icon"
+      className={headerIconButtonClass}
       aria-label={t('sessions.sidebar.header.actions.addProject')}
       title={t('sessions.sidebar.header.actions.addProject')}
       onClick={() => setDirectoryDialogOpen(true)}
       style={{ touchAction: 'manipulation' }}
     >
-      <RiFolderAddLine className="size-4" />
+      <RiFolderAddLine />
     </Button>
   ) : null;
 
   const trailingActions =
-    newChatButton || addProjectButton || editToggle ? (
+    editToggle || newChatButton || addProjectButton ? (
       <>
+        {editToggle}
         {newChatButton}
         {addProjectButton}
-        {editToggle}
       </>
     ) : null;
 
