@@ -947,7 +947,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
     normalizedQuery && searchSessionMatches.length === 0 && searchProjectMatches.length === 0;
   const canEditOrder = !normalizedQuery && projectsMeta.length > 1;
 
-  const headerIconButtonClass = 'size-9 rounded-xl p-0 [&>svg]:size-4';
+  const headerIconButtonClass = 'size-8 min-w-8 rounded-xl p-0 sm:size-9 sm:min-w-9 [&>svg]:size-4';
 
   const editToggle = canEditOrder ? (
     <Button
@@ -985,7 +985,7 @@ export const MobileSessionsSheet: React.FC<MobileSessionsSheetProps> = ({ open, 
       type="button"
       variant="chip"
       size="icon"
-      className={headerIconButtonClass}
+      className={cn(headerIconButtonClass, 'max-[360px]:hidden')}
       aria-label={t('sessions.sidebar.header.actions.addProject')}
       title={t('sessions.sidebar.header.actions.addProject')}
       onClick={() => setDirectoryDialogOpen(true)}
