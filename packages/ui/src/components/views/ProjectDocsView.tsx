@@ -91,7 +91,7 @@ const ProjectDocsContent: React.FC<ProjectDocsContentProps> = ({ index, projectR
               <p className="typography-meta uppercase tracking-wide text-muted-foreground">Project briefing</p>
               <h2 className="mt-1 typography-title font-semibold text-foreground">What this project contains</h2>
               <p className="mt-2 typography-ui-body text-muted-foreground">
-                DevChamber scanned the workspace and turned the repository structure into a readable overview for the user.
+                DevChamber scans the workspace and can write split Markdown docs into the project-local extension folder.
               </p>
               <p className="mt-1 truncate typography-meta text-muted-foreground" title={projectRoot}>{projectRoot}</p>
             </div>
@@ -103,7 +103,7 @@ const ProjectDocsContent: React.FC<ProjectDocsContentProps> = ({ index, projectR
             </div>
             {onGenerateDocs ? (
               <Button size="sm" onClick={() => onGenerateDocs(index)}>
-                Generate docs with agent
+                Generate split Markdown docs
               </Button>
             ) : null}
           </div>

@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { buildProjectDocsDirectoryPath, buildProjectDocsPath, renderProjectDocsMarkdown, saveProjectDocsFile } from './projectDocsFile';
+import {
+  buildProjectDocsDirectoryPath,
+  buildProjectDocsModulesDirectoryPath,
+  buildProjectDocsPath,
+  renderProjectDocsMarkdown,
+  saveProjectDocsFile,
+} from './projectDocsFile';
 import type { RepoIndex } from './repoIndex/schema';
 
 const sampleIndex: RepoIndex = {
@@ -26,9 +32,23 @@ const sampleIndex: RepoIndex = {
       isDocs: false,
       packageName: 'repo',
     },
+    {
+      path: 'src/api/client.ts',
+      name: 'client.ts',
+      directory: 'src/api',
+      extension: '.ts',
+      language: 'typescript',
+      size: 800,
+      mtimeMs: 1000,
+      isDocs: false,
+      packageName: 'repo',
+    },
   ],
-  directories: [{ path: 'src', fileCount: 1, totalSize: 1200 }],
-  symbols: [{ kind: 'component', name: 'App', path: 'src/App.tsx', line: 3 }],
+  directories: [{ path: 'src', fileCount: 2, totalSize: 2000 }],
+  symbols: [
+    { kind: 'component', name: 'App', path: 'src/App.tsx', line: 3 },
+    { kind: 'function', name: 'fetchUser', path: 'src/api/client.ts', line: 4 },
+  ],
   docsFiles: ['README.md'],
   packageBoundaries: [{ path: '', name: 'repo', hasPackageJson: true, hasTsconfig: true }],
   dependencyGraph: [],
@@ -36,24 +56,27 @@ const sampleIndex: RepoIndex = {
 };
 
 describe('project docs file helpers', () => {
-  test('builds a stable workspace-local docs path', () => {
-    expect(buildProjectDocsDirectoryPath('/workspace/project/')).toBe('/workspace/project/docs');
-    expect(buildProjectDocsPath('/workspace/project/')).toBe('/workspace/project/docs/PROJECT_DOCS.md');
+  test('builds stable project-local extension docs paths', () => {
+    expect(buildProjectDocsDirectoryPath('/workspace/project/')).toBe('/workspace/project/.openchamber/repo-docs');
+    expect(buildProjectDocsModulesDirectoryPath('/workspace/project/')).toBe('/workspace/project/.openchamber/repo-docs/modules');
+    expect(buildProjectDocsPath('/workspace/project/')).toBe('/workspace/project/.openchamber/repo-docs/INDEX.md');
   });
 
-  test('renders a persistent project docs markdown scaffold from the repo index', () => {
+  test('renders a persistent project docs markdown index from the repo index', () => {
     const markdown = renderProjectDocsMarkdown(sampleIndex, '/workspace/project');
 
-    expect(markdown).toContain('# Project Docs');
+    expect(markdown).toContain('# Project Docs Index');
     expect(markdown).toContain('Workspace: /workspace/project');
-    expect(markdown).toContain('- Files: 2');
+    expect(markdown).toContain('- Files: 3');
+    expect(markdown).toContain('- Source files documented: 2');
     expect(markdown).toContain('- README.md');
     expect(markdown).toContain('- src/App.tsx (typescript, 1200 bytes)');
     expect(markdown).toContain('- component App — src/App.tsx:3');
   });
 
-  test('creates the docs directory before writing the persisted docs file', async () => {
+  test('creates split module markdown docs with content-derived file descriptions', async () => {
     const calls: string[] = [];
+    const writes = new Map<string, string>();
 
     const result = await saveProjectDocsFile({
       files: {
@@ -61,8 +84,32 @@ describe('project docs file helpers', () => {
           calls.push(`mkdir:${path}`);
           return { success: true, path };
         },
+        scanRepoIndex: async (options) => {
+          calls.push(`scan:${options?.includeContent}:${options?.directory}`);
+          return {
+            directory: '/workspace/project',
+            truncated: false,
+            files: [
+              {
+                path: '/workspace/project/src/App.tsx',
+                relativePath: 'src/App.tsx',
+                size: 1200,
+                mtimeMs: 1000,
+                content: "import React from 'react';\nexport function App() { return <main />; }",
+              },
+              {
+                path: '/workspace/project/src/api/client.ts',
+                relativePath: 'src/api/client.ts',
+                size: 800,
+                mtimeMs: 1000,
+                content: "export async function fetchUser() { return fetch('/api/user'); }",
+              },
+            ],
+          };
+        },
         writeFile: async (path, content) => {
-          calls.push(`write:${path}:${content.includes('# Project Docs')}`);
+          calls.push(`write:${path}`);
+          writes.set(path, content);
           return { success: true, path };
         },
       },
@@ -70,11 +117,27 @@ describe('project docs file helpers', () => {
       projectRoot: '/workspace/project',
     });
 
-    expect(result).toEqual({ path: '/workspace/project/docs/PROJECT_DOCS.md' });
+    expect(result.path).toBe('/workspace/project/.openchamber/repo-docs/INDEX.md');
+    expect(result.paths).toEqual([
+      '/workspace/project/.openchamber/repo-docs/INDEX.md',
+      '/workspace/project/.openchamber/repo-docs/modules/src.md',
+    ]);
 
     expect(calls).toEqual([
-      'mkdir:/workspace/project/docs',
-      'write:/workspace/project/docs/PROJECT_DOCS.md:true',
+      'scan:true:/workspace/project',
+      'mkdir:/workspace/project/.openchamber/repo-docs',
+      'mkdir:/workspace/project/.openchamber/repo-docs/modules',
+      'write:/workspace/project/.openchamber/repo-docs/INDEX.md',
+      'write:/workspace/project/.openchamber/repo-docs/modules/src.md',
     ]);
+
+    const moduleDoc = writes.get('/workspace/project/.openchamber/repo-docs/modules/src.md') ?? '';
+    expect(moduleDoc).toContain('# Module: src');
+    expect(moduleDoc).toContain('### src/App.tsx');
+    expect(moduleDoc).toContain('What it does: renders UI or React logic; declares 1 indexed symbol.');
+    expect(moduleDoc).toContain('Main dependencies: react');
+    expect(moduleDoc).toContain('Public exports: App');
+    expect(moduleDoc).toContain('### src/api/client.ts');
+    expect(moduleDoc).toContain('talks to runtime/server APIs');
   });
 });

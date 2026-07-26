@@ -90,7 +90,7 @@ const buildProjectDocsGenerationPrompt = (index: RepoIndex, projectRoot: string 
   return [
     'Generate readable project documentation for this repository.',
     '',
-    'Goal: gather project information and produce user-facing docs, not generic markdown. Explain what the project is, how it is structured, key modules, important flows, setup/run hints inferred from files, and documentation gaps.',
+    'Goal: turn the generated extension docs from metadata into user-facing Markdown. Explain what each module/file does, what the important code paths are, how modules relate, setup/run hints inferred from files, and documentation gaps.',
     '',
     `Workspace: ${projectRoot || 'current workspace'}`,
     `Repo scan: ${index.files.length} files, ${index.directories.length} directories, ${index.symbols.length} symbols, ${index.docsFiles.length} existing docs files, ${index.packageBoundaries.length} package boundaries.`,
@@ -103,7 +103,7 @@ const buildProjectDocsGenerationPrompt = (index: RepoIndex, projectRoot: string 
     '',
     `Indexed symbols sample:\n${symbols.length ? symbols.map((symbol) => `- ${symbol}`).join('\n') : '- none detected'}`,
     '',
-    'Output format: use visual markdown with clear sections, compact diagrams/tables where helpful, and concrete file references. If information is missing, inspect the repo with tools before finalizing.',
+    'Output format: update the split Markdown files under .openchamber/repo-docs. Keep INDEX.md as the navigation entry point and module files under modules/*.md. Use visual markdown with clear sections, compact diagrams/tables where helpful, and concrete file references. If information is missing, inspect the repo with tools before finalizing.',
   ].join('\n');
 };
 
@@ -308,7 +308,7 @@ export const VSCodeLayout: React.FC = () => {
     const prompt = [
       buildProjectDocsGenerationPrompt(index, activeWorkspacePath),
       '',
-      `Persist the final documentation by updating ${docsPath}.`,
+      `Persist the final documentation by updating ${docsPath} and the linked module Markdown files under .openchamber/repo-docs/modules/.`,
     ].join('\n');
 
     const persistDocs = async () => {
@@ -319,10 +319,10 @@ export const VSCodeLayout: React.FC = () => {
     };
 
     void persistDocs()
-      .then(({ path }) => {
+      .then(({ path, paths }) => {
         setPendingInputText(prompt, 'replace');
         setCurrentView('chat');
-        toast.success(`Project docs saved to ${path}`);
+        toast.success(`Project docs saved to ${path} (${paths.length} Markdown files)`);
       })
       .catch((error) => {
         setPendingInputText(prompt, 'replace');
