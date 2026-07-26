@@ -43,6 +43,7 @@ import type { Session } from '@opencode-ai/sdk/v2';
 import type { UsageWindow } from '@/types';
 import type { SessionContextUsage } from '@/stores/types/sessionTypes';
 import type { RepoIndex } from '@/lib/repoIndex/schema';
+import { buildProjectDocsPath, saveProjectDocsFile } from '@/lib/projectDocsFile';
 import { useUIStore, type TimeFormatPreference } from '@/stores/useUIStore';
 
 const SettingsView = lazyWithChunkRecovery(() => import('@/components/views/SettingsView').then(m => ({ default: m.SettingsView })));
@@ -303,10 +304,32 @@ export const VSCodeLayout: React.FC = () => {
   }, []);
 
   const handleGenerateProjectDocs = React.useCallback((index: RepoIndex) => {
-    setPendingInputText(buildProjectDocsGenerationPrompt(index, activeWorkspacePath), 'replace');
-    setCurrentView('chat');
-    toast.success('Documentation prompt prepared in chat');
-  }, [activeWorkspacePath, setPendingInputText]);
+    const docsPath = buildProjectDocsPath(activeWorkspacePath || '');
+    const prompt = [
+      buildProjectDocsGenerationPrompt(index, activeWorkspacePath),
+      '',
+      `Persist the final documentation by updating ${docsPath}.`,
+    ].join('\n');
+
+    const persistDocs = async () => {
+      if (!activeWorkspacePath) {
+        throw new Error('Open a workspace folder before generating persistent docs.');
+      }
+      return saveProjectDocsFile({ files: runtimeApis.files, index, projectRoot: activeWorkspacePath });
+    };
+
+    void persistDocs()
+      .then(({ path }) => {
+        setPendingInputText(prompt, 'replace');
+        setCurrentView('chat');
+        toast.success(`Project docs saved to ${path}`);
+      })
+      .catch((error) => {
+        setPendingInputText(prompt, 'replace');
+        setCurrentView('chat');
+        toast.error(error instanceof Error ? error.message : 'Failed to save project docs');
+      });
+  }, [activeWorkspacePath, runtimeApis.files, setPendingInputText]);
 
   const isSessionInActiveWorkspace = React.useCallback((session: Session): boolean => {
     if (!activeWorkspacePath) {
